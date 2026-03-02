@@ -151,14 +151,20 @@ skills/iam-departures-remediation/
 │   ├── lambda_parser/
 │   │   └── handler.py          # Lambda 1: validate + filter
 │   └── lambda_worker/
-│       └── handler.py          # Lambda 2: 13-step cleanup
+│       ├── handler.py          # Lambda 2: AWS 13-step cleanup
+│       └── clouds/             # Cross-cloud workers
+│           ├── azure_entra.py  # Entra ID: 6-step (msgraph-sdk)
+│           ├── gcp_iam.py      # GCP: SA 4-step + Workspace 2-step
+│           ├── snowflake_user.py # Snowflake: 6-step (SQL DDL)
+│           └── databricks_scim.py # Databricks: 4-step (SCIM API)
 ├── infra/
 │   ├── cloudformation.yaml     # Full stack (roles, Lambda, SFN, S3, DDB)
+│   ├── cross_account_stackset.yaml # Org-wide role via StackSets
 │   ├── step_function.asl.json  # ASL definition
 │   ├── eventbridge_rule.json   # S3 trigger
 │   ├── snowflake_integration.sql
 │   └── iam_policies/           # Individual policy documents
-└── tests/                      # 34 unit tests
+└── tests/                      # 59 unit tests
 ```
 
 ## MITRE ATT&CK Coverage
