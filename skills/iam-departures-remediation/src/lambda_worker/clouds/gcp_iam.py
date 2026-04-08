@@ -145,7 +145,9 @@ def _disable_service_account(client, sa_name: str, step: int) -> RemediationStep
         return RemediationStep(step_number=step, action="disable_service_account", target=sa_name, detail="Service account disabled")
     except Exception as e:
         logger.warning("Failed to disable SA %s: %s", sa_name, e)
-        return RemediationStep(step_number=step, action="disable_service_account", target=sa_name, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="disable_service_account", target=sa_name, status=RemediationStatus.FAILED, error=str(e)
+        )
 
 
 def _delete_sa_keys(client, sa_name: str, step: int) -> RemediationStep:
@@ -167,7 +169,9 @@ def _delete_sa_keys(client, sa_name: str, step: int) -> RemediationStep:
                 skipped += 1  # SYSTEM_MANAGED — cannot delete
 
         return RemediationStep(
-            step_number=step, action="delete_sa_keys", target=sa_name,
+            step_number=step,
+            action="delete_sa_keys",
+            target=sa_name,
             detail=f"Deleted {deleted} user-managed keys, skipped {skipped} system-managed",
         )
     except Exception as e:
@@ -205,12 +209,16 @@ def _remove_iam_bindings(principal: str, project_ids: list[str], step: int) -> R
                 rm_client.set_iam_policy(request=request)
 
         return RemediationStep(
-            step_number=step, action="remove_iam_bindings", target=principal,
+            step_number=step,
+            action="remove_iam_bindings",
+            target=principal,
             detail=f"Removed {total_removed} bindings across {len(project_ids)} projects",
         )
     except Exception as e:
         logger.warning("Failed to remove IAM bindings for %s: %s", principal, e)
-        return RemediationStep(step_number=step, action="remove_iam_bindings", target=principal, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="remove_iam_bindings", target=principal, status=RemediationStatus.FAILED, error=str(e)
+        )
 
 
 def _delete_service_account(client, sa_name: str, step: int) -> RemediationStep:
@@ -221,12 +229,16 @@ def _delete_service_account(client, sa_name: str, step: int) -> RemediationStep:
         request = types.DeleteServiceAccountRequest(name=sa_name)
         client.delete_service_account(request=request)
         return RemediationStep(
-            step_number=step, action="delete_service_account", target=sa_name,
+            step_number=step,
+            action="delete_service_account",
+            target=sa_name,
             detail="Service account deleted (30-day undelete window)",
         )
     except Exception as e:
         logger.warning("Failed to delete SA %s: %s", sa_name, e)
-        return RemediationStep(step_number=step, action="delete_service_account", target=sa_name, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="delete_service_account", target=sa_name, status=RemediationStatus.FAILED, error=str(e)
+        )
 
 
 async def remediate_workspace_user(
@@ -260,7 +272,9 @@ async def remediate_workspace_user(
     if project_ids:
         result.steps.append(_remove_iam_bindings(f"user:{email}", project_ids, step=1))
     else:
-        result.steps.append(RemediationStep(step_number=1, action="remove_iam_bindings", target=email, detail="No projects specified, skipped"))
+        result.steps.append(
+            RemediationStep(step_number=1, action="remove_iam_bindings", target=email, detail="No projects specified, skipped")
+        )
 
     # Step 2: Delete via Admin SDK (20-day soft delete)
     result.steps.append(_delete_workspace_user(email, step=2))
@@ -277,9 +291,13 @@ def _delete_workspace_user(email: str, step: int) -> RemediationStep:
         service = build("admin", "directory_v1")
         service.users().delete(userKey=email).execute()
         return RemediationStep(
-            step_number=step, action="delete_workspace_user", target=email,
+            step_number=step,
+            action="delete_workspace_user",
+            target=email,
             detail="Workspace user deleted (20-day recovery window)",
         )
     except Exception as e:
         logger.warning("Failed to delete Workspace user %s: %s", email, e)
-        return RemediationStep(step_number=step, action="delete_workspace_user", target=email, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="delete_workspace_user", target=email, status=RemediationStatus.FAILED, error=str(e)
+        )

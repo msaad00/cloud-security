@@ -76,17 +76,21 @@ def handler(event: dict, context: Any) -> dict:
             if result["action"] == "remediate":
                 validated.append(result["entry"])
             else:
-                skipped.append({
+                skipped.append(
+                    {
+                        "email": entry.get("email", ""),
+                        "iam_username": entry.get("iam_username", ""),
+                        "reason": result["reason"],
+                    }
+                )
+        except Exception as exc:
+            errors.append(
+                {
                     "email": entry.get("email", ""),
                     "iam_username": entry.get("iam_username", ""),
-                    "reason": result["reason"],
-                })
-        except Exception as exc:
-            errors.append({
-                "email": entry.get("email", ""),
-                "iam_username": entry.get("iam_username", ""),
-                "error": str(exc),
-            })
+                    "error": str(exc),
+                }
+            )
             logger.exception("Validation error for %s", entry.get("email", ""))
 
     summary = {

@@ -45,10 +45,12 @@ class TestRemediationSteps:
         """Should deactivate then delete all access keys."""
         iam = MagicMock()
         iam.get_paginator.return_value.paginate.return_value = [
-            {"AccessKeyMetadata": [
-                {"AccessKeyId": "AKIA111", "Status": "Active"},
-                {"AccessKeyId": "AKIA222", "Status": "Active"},
-            ]}
+            {
+                "AccessKeyMetadata": [
+                    {"AccessKeyId": "AKIA111", "Status": "Active"},
+                    {"AccessKeyId": "AKIA222", "Status": "Active"},
+                ]
+            }
         ]
         actions = []
         _deactivate_access_keys(iam, "jane", actions)
@@ -84,10 +86,12 @@ class TestRemediationSteps:
     def test_remove_from_groups(self):
         iam = MagicMock()
         iam.get_paginator.return_value.paginate.return_value = [
-            {"Groups": [
-                {"GroupName": "developers"},
-                {"GroupName": "admin"},
-            ]}
+            {
+                "Groups": [
+                    {"GroupName": "developers"},
+                    {"GroupName": "admin"},
+                ]
+            }
         ]
         actions = []
         _remove_from_groups(iam, "jane", actions)
@@ -98,9 +102,11 @@ class TestRemediationSteps:
     def test_detach_managed_policies(self):
         iam = MagicMock()
         iam.get_paginator.return_value.paginate.return_value = [
-            {"AttachedPolicies": [
-                {"PolicyName": "ReadOnly", "PolicyArn": "arn:aws:iam::aws:policy/ReadOnlyAccess"},
-            ]}
+            {
+                "AttachedPolicies": [
+                    {"PolicyName": "ReadOnly", "PolicyArn": "arn:aws:iam::aws:policy/ReadOnlyAccess"},
+                ]
+            }
         ]
         actions = []
         _detach_managed_policies(iam, "jane", actions)
@@ -110,9 +116,7 @@ class TestRemediationSteps:
 
     def test_delete_inline_policies(self):
         iam = MagicMock()
-        iam.get_paginator.return_value.paginate.return_value = [
-            {"PolicyNames": ["custom-policy-1", "custom-policy-2"]}
-        ]
+        iam.get_paginator.return_value.paginate.return_value = [{"PolicyNames": ["custom-policy-1", "custom-policy-2"]}]
         actions = []
         _delete_inline_policies(iam, "jane", actions)
 
@@ -122,9 +126,11 @@ class TestRemediationSteps:
     def test_delete_mfa_devices(self):
         iam = MagicMock()
         iam.get_paginator.return_value.paginate.return_value = [
-            {"MFADevices": [
-                {"SerialNumber": "arn:aws:iam::123:mfa/jane"},
-            ]}
+            {
+                "MFADevices": [
+                    {"SerialNumber": "arn:aws:iam::123:mfa/jane"},
+                ]
+            }
         ]
         actions = []
         _delete_mfa_devices(iam, "jane", actions)
@@ -153,12 +159,21 @@ class TestWorkerHandler:
         # Simplify — mock each paginator to return empty
         def mock_paginate(*args, **kwargs):
             paginator = MagicMock()
-            paginator.paginate.return_value = iter([
-                {"AccessKeyMetadata": [], "Groups": [], "AttachedPolicies": [],
-                 "PolicyNames": [], "MFADevices": [], "Certificates": [],
-                 "SSHPublicKeys": []}
-            ])
+            paginator.paginate.return_value = iter(
+                [
+                    {
+                        "AccessKeyMetadata": [],
+                        "Groups": [],
+                        "AttachedPolicies": [],
+                        "PolicyNames": [],
+                        "MFADevices": [],
+                        "Certificates": [],
+                        "SSHPublicKeys": [],
+                    }
+                ]
+            )
             return paginator
+
         iam.get_paginator.side_effect = mock_paginate
         iam.list_service_specific_credentials.return_value = {"ServiceSpecificCredentials": []}
         iam.exceptions.NoSuchEntityException = type("E", (Exception,), {})

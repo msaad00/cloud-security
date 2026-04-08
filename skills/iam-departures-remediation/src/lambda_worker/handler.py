@@ -131,11 +131,13 @@ def handler(event: dict, context: Any) -> dict:
 
         # Step 11: DELETE the IAM user (all deps removed)
         iam.delete_user(UserName=iam_username)
-        actions_taken.append({
-            "action": "delete_user",
-            "target": iam_username,
-            "timestamp": _now(),
-        })
+        actions_taken.append(
+            {
+                "action": "delete_user",
+                "target": iam_username,
+                "timestamp": _now(),
+            }
+        )
 
         logger.info("Successfully deleted IAM user: %s", iam_username)
 
@@ -156,9 +158,7 @@ def handler(event: dict, context: Any) -> dict:
         logger.exception("Remediation failed for %s in %s", iam_username, account_id)
 
         # Still write audit — record the failure
-        audit_record = _build_audit_record(
-            entry, actions_taken, "error", error=str(exc)
-        )
+        audit_record = _build_audit_record(entry, actions_taken, "error", error=str(exc))
         _write_audit(audit_record)
 
         return {
@@ -187,33 +187,39 @@ def _deactivate_access_keys(iam: Any, username: str, actions: list) -> None:
                 AccessKeyId=key_id,
                 Status="Inactive",
             )
-            actions.append({
-                "action": "deactivate_access_key",
-                "target": key_id,
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "deactivate_access_key",
+                    "target": key_id,
+                    "timestamp": _now(),
+                }
+            )
 
             # Then delete (required before user deletion)
             iam.delete_access_key(
                 UserName=username,
                 AccessKeyId=key_id,
             )
-            actions.append({
-                "action": "delete_access_key",
-                "target": key_id,
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_access_key",
+                    "target": key_id,
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_login_profile(iam: Any, username: str, actions: list) -> None:
     """Delete console login profile (password)."""
     try:
         iam.delete_login_profile(UserName=username)
-        actions.append({
-            "action": "delete_login_profile",
-            "target": username,
-            "timestamp": _now(),
-        })
+        actions.append(
+            {
+                "action": "delete_login_profile",
+                "target": username,
+                "timestamp": _now(),
+            }
+        )
     except iam.exceptions.NoSuchEntityException:
         pass  # No login profile — console access was never enabled
 
@@ -228,11 +234,13 @@ def _remove_from_groups(iam: Any, username: str, actions: list) -> None:
                 GroupName=group_name,
                 UserName=username,
             )
-            actions.append({
-                "action": "remove_from_group",
-                "target": group_name,
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "remove_from_group",
+                    "target": group_name,
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _detach_managed_policies(iam: Any, username: str, actions: list) -> None:
@@ -244,11 +252,13 @@ def _detach_managed_policies(iam: Any, username: str, actions: list) -> None:
                 UserName=username,
                 PolicyArn=policy["PolicyArn"],
             )
-            actions.append({
-                "action": "detach_managed_policy",
-                "target": policy["PolicyArn"],
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "detach_managed_policy",
+                    "target": policy["PolicyArn"],
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_inline_policies(iam: Any, username: str, actions: list) -> None:
@@ -260,11 +270,13 @@ def _delete_inline_policies(iam: Any, username: str, actions: list) -> None:
                 UserName=username,
                 PolicyName=policy_name,
             )
-            actions.append({
-                "action": "delete_inline_policy",
-                "target": policy_name,
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_inline_policy",
+                    "target": policy_name,
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_mfa_devices(iam: Any, username: str, actions: list) -> None:
@@ -283,11 +295,13 @@ def _delete_mfa_devices(iam: Any, username: str, actions: list) -> None:
                     iam.delete_virtual_mfa_device(SerialNumber=serial)
                 except iam.exceptions.NoSuchEntityException:
                     pass
-            actions.append({
-                "action": "delete_mfa_device",
-                "target": serial,
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_mfa_device",
+                    "target": serial,
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_signing_certificates(iam: Any, username: str, actions: list) -> None:
@@ -299,11 +313,13 @@ def _delete_signing_certificates(iam: Any, username: str, actions: list) -> None
                 UserName=username,
                 CertificateId=cert["CertificateId"],
             )
-            actions.append({
-                "action": "delete_signing_certificate",
-                "target": cert["CertificateId"],
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_signing_certificate",
+                    "target": cert["CertificateId"],
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_ssh_keys(iam: Any, username: str, actions: list) -> None:
@@ -315,11 +331,13 @@ def _delete_ssh_keys(iam: Any, username: str, actions: list) -> None:
                 UserName=username,
                 SSHPublicKeyId=key["SSHPublicKeyId"],
             )
-            actions.append({
-                "action": "delete_ssh_key",
-                "target": key["SSHPublicKeyId"],
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_ssh_key",
+                    "target": key["SSHPublicKeyId"],
+                    "timestamp": _now(),
+                }
+            )
 
 
 def _delete_service_credentials(iam: Any, username: str, actions: list) -> None:
@@ -331,11 +349,13 @@ def _delete_service_credentials(iam: Any, username: str, actions: list) -> None:
                 UserName=username,
                 ServiceSpecificCredentialId=cred["ServiceSpecificCredentialId"],
             )
-            actions.append({
-                "action": "delete_service_credential",
-                "target": cred["ServiceSpecificCredentialId"],
-                "timestamp": _now(),
-            })
+            actions.append(
+                {
+                    "action": "delete_service_credential",
+                    "target": cred["ServiceSpecificCredentialId"],
+                    "timestamp": _now(),
+                }
+            )
     except Exception:
         pass  # Some accounts may not support this API
 
@@ -354,12 +374,14 @@ def _tag_user_for_audit(iam: Any, username: str, entry: dict, actions: list) -> 
     ]
     try:
         iam.tag_user(UserName=username, Tags=tags)
-        actions.append({
-            "action": "tag_user",
-            "target": username,
-            "tags": {t["Key"]: t["Value"] for t in tags},
-            "timestamp": _now(),
-        })
+        actions.append(
+            {
+                "action": "tag_user",
+                "target": username,
+                "tags": {t["Key"]: t["Value"] for t in tags},
+                "timestamp": _now(),
+            }
+        )
     except Exception:
         logger.warning("Failed to tag user %s before deletion", username)
 
@@ -408,12 +430,14 @@ def _write_audit(record: dict) -> None:
         try:
             dynamodb = boto3.resource("dynamodb")
             table = dynamodb.Table(AUDIT_TABLE)
-            table.put_item(Item={
-                "pk": f"AUDIT#{record['account_id']}#{record['iam_username']}",
-                "sk": record["audit_timestamp"],
-                **{k: v for k, v in record.items() if v is not None and v != ""},
-                "actions_taken": json.dumps(record.get("actions_taken", [])),
-            })
+            table.put_item(
+                Item={
+                    "pk": f"AUDIT#{record['account_id']}#{record['iam_username']}",
+                    "sk": record["audit_timestamp"],
+                    **{k: v for k, v in record.items() if v is not None and v != ""},
+                    "actions_taken": json.dumps(record.get("actions_taken", [])),
+                }
+            )
         except Exception:
             logger.exception("Failed to write DynamoDB audit record")
 

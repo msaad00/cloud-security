@@ -422,10 +422,7 @@ class ClickHouseSource(HRSource):
         client = self._get_client()
         result = client.query(query)
         columns = [col.lower() for col in result.column_names]
-        return [
-            self._row_to_record(dict(zip(columns, row)))
-            for row in result.result_rows
-        ]
+        return [self._row_to_record(dict(zip(columns, row))) for row in result.result_rows]
 
     def _row_to_record(self, row: dict) -> DepartureRecord:
         rehire_date = row.get("rehire_date")

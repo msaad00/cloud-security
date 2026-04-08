@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Finding:
     control_id: str
@@ -39,6 +40,7 @@ class Finding:
 # Section 1 — IAM
 # ---------------------------------------------------------------------------
 
+
 def check_1_1_no_gmail_accounts(crm_client, project_id: str) -> Finding:
     """CIS 1.1 — Corporate credentials only (no personal Gmail)."""
     try:
@@ -49,15 +51,24 @@ def check_1_1_no_gmail_accounts(crm_client, project_id: str) -> Finding:
                 if "gmail.com" in member.lower():
                     gmail_members.append(f"{member} -> {binding.role}")
         return Finding(
-            control_id="1.1", title="No personal Gmail accounts", section="iam",
-            severity="HIGH", status="FAIL" if gmail_members else "PASS",
+            control_id="1.1",
+            title="No personal Gmail accounts",
+            section="iam",
+            severity="HIGH",
+            status="FAIL" if gmail_members else "PASS",
             detail=f"{len(gmail_members)} personal Gmail accounts in IAM" if gmail_members else "No personal Gmail accounts",
-            nist_csf="PR.AC-1", resources=gmail_members,
+            nist_csf="PR.AC-1",
+            resources=gmail_members,
         )
     except Exception as e:
         return Finding(
-            control_id="1.1", title="No personal Gmail accounts", section="iam",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-1",
+            control_id="1.1",
+            title="No personal Gmail accounts",
+            section="iam",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
         )
 
 
@@ -68,21 +79,28 @@ def check_1_3_no_sa_keys(iam_client, project_id: str) -> Finding:
         service_accounts = list(iam_client.list_service_accounts(request=request))
         sas_with_keys = []
         for sa in service_accounts:
-            keys = list(iam_client.list_service_account_keys(
-                request={"name": sa.name, "key_types": ["USER_MANAGED"]}
-            ))
+            keys = list(iam_client.list_service_account_keys(request={"name": sa.name, "key_types": ["USER_MANAGED"]}))
             if keys:
                 sas_with_keys.append(f"{sa.email} ({len(keys)} keys)")
         return Finding(
-            control_id="1.3", title="No user-managed SA keys", section="iam",
-            severity="HIGH", status="FAIL" if sas_with_keys else "PASS",
+            control_id="1.3",
+            title="No user-managed SA keys",
+            section="iam",
+            severity="HIGH",
+            status="FAIL" if sas_with_keys else "PASS",
             detail=f"{len(sas_with_keys)} SAs with user-managed keys" if sas_with_keys else "No user-managed keys found",
-            nist_csf="PR.AC-1", resources=sas_with_keys,
+            nist_csf="PR.AC-1",
+            resources=sas_with_keys,
         )
     except Exception as e:
         return Finding(
-            control_id="1.3", title="No user-managed SA keys", section="iam",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-1",
+            control_id="1.3",
+            title="No user-managed SA keys",
+            section="iam",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
         )
 
 
@@ -94,29 +112,37 @@ def check_1_4_sa_key_rotation(iam_client, project_id: str) -> Finding:
         service_accounts = list(iam_client.list_service_accounts(request=request))
         old_keys = []
         for sa in service_accounts:
-            keys = list(iam_client.list_service_account_keys(
-                request={"name": sa.name, "key_types": ["USER_MANAGED"]}
-            ))
+            keys = list(iam_client.list_service_account_keys(request={"name": sa.name, "key_types": ["USER_MANAGED"]}))
             for key in keys:
                 created = key.valid_after_time
                 if created and (now - created.replace(tzinfo=timezone.utc)).days > 90:
                     old_keys.append(f"{sa.email}: key {key.name.split('/')[-1]}")
         return Finding(
-            control_id="1.4", title="SA key rotation (90 days)", section="iam",
-            severity="MEDIUM", status="FAIL" if old_keys else "PASS",
+            control_id="1.4",
+            title="SA key rotation (90 days)",
+            section="iam",
+            severity="MEDIUM",
+            status="FAIL" if old_keys else "PASS",
             detail=f"{len(old_keys)} keys older than 90 days" if old_keys else "All keys within 90 days",
-            nist_csf="PR.AC-1", resources=old_keys,
+            nist_csf="PR.AC-1",
+            resources=old_keys,
         )
     except Exception as e:
         return Finding(
-            control_id="1.4", title="SA key rotation (90 days)", section="iam",
-            severity="MEDIUM", status="ERROR", detail=str(e), nist_csf="PR.AC-1",
+            control_id="1.4",
+            title="SA key rotation (90 days)",
+            section="iam",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 2 — Storage
 # ---------------------------------------------------------------------------
+
 
 def check_2_3_no_public_buckets(storage_client, project_id: str) -> Finding:
     """CIS 2.3 — No public buckets."""
@@ -129,15 +155,24 @@ def check_2_3_no_public_buckets(storage_client, project_id: str) -> Finding:
                 if "allUsers" in binding["members"] or "allAuthenticatedUsers" in binding["members"]:
                     public_buckets.append(f"{bucket.name} -> {binding['role']}")
         return Finding(
-            control_id="2.3", title="No public buckets", section="storage",
-            severity="CRITICAL", status="FAIL" if public_buckets else "PASS",
+            control_id="2.3",
+            title="No public buckets",
+            section="storage",
+            severity="CRITICAL",
+            status="FAIL" if public_buckets else "PASS",
             detail=f"{len(public_buckets)} public bucket bindings" if public_buckets else "No public buckets",
-            nist_csf="PR.AC-3", resources=public_buckets,
+            nist_csf="PR.AC-3",
+            resources=public_buckets,
         )
     except Exception as e:
         return Finding(
-            control_id="2.3", title="No public buckets", section="storage",
-            severity="CRITICAL", status="ERROR", detail=str(e), nist_csf="PR.AC-3",
+            control_id="2.3",
+            title="No public buckets",
+            section="storage",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-3",
         )
 
 
@@ -150,21 +185,31 @@ def check_2_1_uniform_access(storage_client, project_id: str) -> Finding:
             if not bucket.iam_configuration.uniform_bucket_level_access_enabled:
                 legacy_acl.append(bucket.name)
         return Finding(
-            control_id="2.1", title="Uniform bucket-level access", section="storage",
-            severity="HIGH", status="FAIL" if legacy_acl else "PASS",
+            control_id="2.1",
+            title="Uniform bucket-level access",
+            section="storage",
+            severity="HIGH",
+            status="FAIL" if legacy_acl else "PASS",
             detail=f"{len(legacy_acl)} buckets with legacy ACL" if legacy_acl else "All buckets use uniform access",
-            nist_csf="PR.AC-3", resources=legacy_acl,
+            nist_csf="PR.AC-3",
+            resources=legacy_acl,
         )
     except Exception as e:
         return Finding(
-            control_id="2.1", title="Uniform bucket-level access", section="storage",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-3",
+            control_id="2.1",
+            title="Uniform bucket-level access",
+            section="storage",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-3",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 4 — Networking
 # ---------------------------------------------------------------------------
+
 
 def check_4_2_no_unrestricted_ssh_rdp(compute_client, project_id: str) -> Finding:
     """CIS 4.2 — No unrestricted SSH/RDP in firewall rules."""
@@ -186,15 +231,24 @@ def check_4_2_no_unrestricted_ssh_rdp(compute_client, project_id: str) -> Findin
                 if (22 in ports or 3389 in ports) and "0.0.0.0/0" in (rule.source_ranges or []):
                     open_rules.append(f"{rule.name}: {allowed.I_p_protocol}/{','.join(allowed.ports or [])}")
         return Finding(
-            control_id="4.2", title="No unrestricted SSH/RDP", section="networking",
-            severity="HIGH", status="FAIL" if open_rules else "PASS",
+            control_id="4.2",
+            title="No unrestricted SSH/RDP",
+            section="networking",
+            severity="HIGH",
+            status="FAIL" if open_rules else "PASS",
             detail=f"{len(open_rules)} rules allow 0.0.0.0/0 on SSH/RDP" if open_rules else "No unrestricted SSH/RDP",
-            nist_csf="PR.AC-5", resources=open_rules,
+            nist_csf="PR.AC-5",
+            resources=open_rules,
         )
     except Exception as e:
         return Finding(
-            control_id="4.2", title="No unrestricted SSH/RDP", section="networking",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-5",
+            control_id="4.2",
+            title="No unrestricted SSH/RDP",
+            section="networking",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-5",
         )
 
 
@@ -208,21 +262,31 @@ def check_4_3_vpc_flow_logs(compute_client, project_id: str) -> Finding:
                 subnets.append(subnet)
         no_logs = [s.name for s in subnets if not getattr(s, "log_config", None) or not s.log_config.enable]
         return Finding(
-            control_id="4.3", title="VPC flow logs on all subnets", section="networking",
-            severity="MEDIUM", status="FAIL" if no_logs else "PASS",
+            control_id="4.3",
+            title="VPC flow logs on all subnets",
+            section="networking",
+            severity="MEDIUM",
+            status="FAIL" if no_logs else "PASS",
             detail=f"{len(no_logs)} subnets without flow logs" if no_logs else "All subnets have flow logs",
-            nist_csf="DE.CM-1", resources=no_logs,
+            nist_csf="DE.CM-1",
+            resources=no_logs,
         )
     except Exception as e:
         return Finding(
-            control_id="4.3", title="VPC flow logs on all subnets", section="networking",
-            severity="MEDIUM", status="ERROR", detail=str(e), nist_csf="DE.CM-1",
+            control_id="4.3",
+            title="VPC flow logs on all subnets",
+            section="networking",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.CM-1",
         )
 
 
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
+
 
 def _status_symbol(status: str) -> str:
     return {"PASS": "\033[92m✓\033[0m", "FAIL": "\033[91m✗\033[0m", "ERROR": "\033[90m?\033[0m"}.get(status, "?")
@@ -235,8 +299,9 @@ def run_assessment(project_id: str, section: str | None = None) -> list[Finding]
         from google.cloud.compute_v1.services.firewalls import FirewallsClient
         from google.cloud.compute_v1.services.subnetworks import SubnetworksClient
     except ImportError:
-        print("ERROR: Install GCP SDKs: pip install google-cloud-iam google-cloud-storage "
-              "google-cloud-resource-manager google-cloud-compute")
+        print(
+            "ERROR: Install GCP SDKs: pip install google-cloud-iam google-cloud-storage google-cloud-resource-manager google-cloud-compute"
+        )
         sys.exit(1)
 
     crm = resourcemanager_v3.ProjectsClient()
@@ -275,9 +340,9 @@ def print_summary(findings: list[Finding]) -> None:
     passed = sum(1 for f in findings if f.status == "PASS")
     total = len(findings)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("  CIS GCP Foundations v3.0 — Assessment Results")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     current_section = ""
     for f in findings:
@@ -291,9 +356,9 @@ def print_summary(findings: list[Finding]) -> None:
                 print(f"         - {r}")
 
     pct = (passed / total * 100) if total else 0
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  Score: {passed}/{total} passed ({pct:.0f}%)")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
 
 def main():
