@@ -10,6 +10,8 @@ skills/
   cspm-aws-cis-benchmark/       — CIS AWS Foundations v3.0 (18 checks)
   cspm-gcp-cis-benchmark/       — CIS GCP Foundations v3.0 (20 checks + 5 Vertex AI)
   cspm-azure-cis-benchmark/     — CIS Azure Foundations v2.1 (19 checks + 5 AI Foundry)
+  model-serving-security/       — Model serving security benchmark (16 checks)
+  gpu-cluster-security/         — GPU cluster security benchmark (13 checks)
   vuln-remediation-pipeline/    — Auto-remediate supply chain vulnerabilities
 ```
 

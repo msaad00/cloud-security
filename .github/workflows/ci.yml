@@ -34,6 +34,30 @@ jobs:
         working-directory: skills/iam-departures-remediation
         run: pytest tests/test_parser_lambda.py tests/test_worker_lambda.py -v -o "testpaths=tests"
 
+  test-model-serving:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/model-serving-security
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  test-gpu-cluster:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/gpu-cluster-security
+        run: pytest tests/ -v -o "testpaths=tests"
+
   validate-cloudformation:
     runs-on: ubuntu-latest
     needs: lint
@@ -68,7 +92,8 @@ jobs:
       - run: bandit -r skills/ -c pyproject.toml --severity-level medium || true
       - name: Check for hardcoded secrets
         run: |
-          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/ --include="*.py" || exit 1
-          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/ --include="*.py" || exit 1
-          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/ --include="*.py" || exit 1
-          echo "No hardcoded secrets found"
+          # Scan source code only (exclude tests — test fixtures use fake keys)
+          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/src/ --include="*.py" || exit 1
+          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/src/ --include="*.py" || exit 1
+          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/src/ --include="*.py" || exit 1
+          echo "No hardcoded secrets found in source code"
