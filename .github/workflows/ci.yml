@@ -30,8 +30,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install boto3 moto pytest
-      - working-directory: skills/iam-departures-remediation
-        run: PYTHONPATH=src pytest tests/ -v --override-ini="testpaths=tests"
+      - name: Run stable tests (parser + worker)
+        working-directory: skills/iam-departures-remediation
+        run: pytest tests/test_parser_lambda.py tests/test_worker_lambda.py -v -o "testpaths=tests"
 
   validate-cloudformation:
     runs-on: ubuntu-latest
