@@ -37,34 +37,37 @@ Automated assessment of AWS accounts against the CIS AWS Foundations Benchmark v
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    subgraph AWS["AWS Account — read-only"]
+        IAM["IAM<br/>7 checks"]
+        S3["S3 Storage<br/>4 checks"]
+        CT["CloudTrail<br/>4 checks"]
+        VPC["VPC/Network<br/>3 checks"]
+    end
+
+    CHK["checks.py<br/>18 CIS v3.0 controls<br/>SecurityAudit policy only"]
+
+    IAM --> CHK
+    S3 --> CHK
+    CT --> CHK
+    VPC --> CHK
+
+    CHK --> JSON["JSON<br/>per-control results"]
+    CHK --> CON["Console<br/>pass/fail summary"]
+    CHK --> SARIF["SARIF<br/>GitHub Security tab"]
+
+    style AWS fill:#1e293b,stroke:#475569,color:#e2e8f0
+    style CHK fill:#172554,stroke:#3b82f6,color:#e2e8f0
 ```
-  ┌─────────────────────────────────────────────────────────────────┐
-  │                      AWS Account(s)                              │
-  │                                                                  │
-  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-  │  │   IAM    │  │    S3    │  │CloudTrail│  │   VPC    │       │
-  │  │ 7 checks │  │ 4 checks │  │ 4 checks │  │ 3 checks │       │
-  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
-  │       └──────────────┴──────┬──────┴──────────────┘              │
-  └─────────────────────────────┼────────────────────────────────────┘
-                                │ boto3 (read-only)
-                                ▼
-                  ┌──────────────────────────┐
-                  │   checks.py              │
-                  │   18 CIS v3.0 controls   │
-                  │                          │
-                  │   SecurityAudit policy   │
-                  │   (no write access)      │
-                  └─────────────┬────────────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              ▼                 ▼                   ▼
-        ┌──────────┐    ┌──────────┐       ┌──────────┐
-        │  JSON    │    │ Console  │       │  SARIF   │
-        │ (per-    │    │ summary  │       │ (GitHub  │
-        │  control)│    │ pass/fail│       │  upload) │
-        └──────────┘    └──────────┘       └──────────┘
-```
+
+## Security Guardrails
+
+- **Read-only**: Requires only `SecurityAudit` managed policy. Zero write permissions.
+- **No credentials stored**: AWS credentials come from environment/instance profile only.
+- **No data exfiltration**: Check results stay local. No external API calls beyond AWS SDK.
+- **Safe to run in production**: Cannot modify any AWS resources.
+- **Idempotent**: Run as often as needed with no side effects.
 
 ## Controls — CIS AWS Foundations v3.0 (key controls)
 

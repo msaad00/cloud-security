@@ -47,32 +47,55 @@ and security model. Read [examples.md](examples.md) for deployment walkthroughs.
 
 ## Pipeline Overview
 
+```mermaid
+flowchart TD
+    SCAN["Scan Input<br/>SARIF / JSON"]
+    S3["S3 Findings Bucket<br/>KMS encrypted"]
+    EB["EventBridge Rule"]
+
+    subgraph SFN["Step Function"]
+        TRIAGE["Lambda 1 — Triage<br/>EPSS + KEV + CVSS"]
+        PATCH["Lambda 2 — Patcher"]
+    end
+
+    P0["P0: CISA KEV / CVSS >= 9.0<br/>1h SLA — auto-patch"]
+    P1["P1: CVSS >= 7.0 + EPSS > 0.7<br/>4h SLA — auto-patch or PR"]
+    P2["P2: CVSS >= 4.0 / EPSS > 0.3<br/>72h SLA — create PR"]
+    P3["P3: Low risk<br/>30d — notify only"]
+
+    subgraph FIX["Remediation Actions"]
+        DEP["Dependency Upgrade<br/>7 ecosystems"]
+        CRED["Credential Rotation<br/>Secrets Manager / Vault"]
+        QUAR["MCP Server Quarantine<br/>config rewrite + proxy deny"]
+    end
+
+    AUDIT["DynamoDB Audit + Notify"]
+    VERIFY["Re-scan to confirm fix"]
+
+    SCAN --> S3 --> EB --> TRIAGE
+    TRIAGE --> P0 --> PATCH
+    TRIAGE --> P1 --> PATCH
+    TRIAGE --> P2 --> PATCH
+    TRIAGE --> P3 --> AUDIT
+    PATCH --> DEP
+    PATCH --> CRED
+    PATCH --> QUAR
+    PATCH --> AUDIT --> VERIFY
+
+    style SFN fill:#172554,stroke:#3b82f6,color:#e2e8f0
+    style FIX fill:#14532d,stroke:#22c55e,color:#e2e8f0
+    style P0 fill:#7f1d1d,stroke:#ef4444,color:#e2e8f0
 ```
-agent-bom scan (SARIF/JSON)
-        │
-        ▼
-   S3 Findings Bucket (KMS encrypted)
-        │ PutObject
-        ▼
-   EventBridge Rule
-        │
-        ▼
-   Step Function
-   ├── Lambda 1 (Triage): EPSS + KEV + policy filter
-   │   ├── CRITICAL/KEV → immediate remediation
-   │   ├── HIGH + EPSS > 0.7 → urgent (4h SLA)
-   │   ├── MEDIUM → standard (72h SLA)
-   │   └── LOW → backlog (notify only)
-   │
-   ├── Lambda 2 (Patcher): per-ecosystem fix
-   │   ├── Dependency upgrade (PR or direct apply)
-   │   ├── Credential rotation (Secrets Manager/Vault)
-   │   └── MCP server quarantine (config rewrite)
-   │
-   └── Notify: Slack/Teams/PagerDuty + DynamoDB audit
-        │
-        ▼
-   Verify: re-scan to confirm fix
+
+## Security Guardrails
+
+- **PR-first**: P1/P2 fixes go through code review. Only P0 (KEV/CVSS 9.0+) auto-applies to main.
+- **Rollback window**: Rotated credentials are deactivated (not deleted) for 24h rollback.
+- **Protected packages**: Allowlist prevents breaking pinned dependencies.
+- **VEX support**: Accept VEX justifications to suppress false positives.
+- **MCP quarantine is reversible**: Auto-unquarantines when fix becomes available.
+- **Skip conditions**: Already patched, no fix available, suppressed by VEX, in grace period — all handled.
+- **Audit trail**: Every action logged to DynamoDB + S3.
 ```
 
 ## Triage Logic

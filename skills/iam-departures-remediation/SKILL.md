@@ -47,26 +47,42 @@ for deployment walkthroughs and usage scenarios.
 
 ## Pipeline Overview
 
+```mermaid
+flowchart TD
+    HR["HR Source<br/>Workday / Snowflake / Databricks / ClickHouse"]
+    REC{"Reconciler<br/>SHA-256 change detect"}
+    EXIT["EXIT — no changes"]
+    S3["S3 Manifest<br/>KMS encrypted"]
+    EB["EventBridge Rule<br/>S3 PutObject trigger"]
+
+    subgraph SFN["Step Function — VPC isolated"]
+        L1["Lambda 1 — Parser<br/>validate, grace period,<br/>rehire filter"]
+        L2["Lambda 2 — Worker<br/>13-step IAM cleanup"]
+    end
+
+    AUDIT["Audit Trail<br/>DynamoDB + S3 + warehouse"]
+
+    HR --> REC
+    REC -->|no change| EXIT
+    REC -->|change detected| S3
+    S3 --> EB
+    EB --> L1
+    L1 --> L2
+    L2 --> AUDIT
+
+    style SFN fill:#172554,stroke:#3b82f6,color:#e2e8f0
+    style REC fill:#7f1d1d,stroke:#ef4444,color:#e2e8f0
 ```
-HR Source (Workday/Snowflake/DBX/CH)
-        │
-        ▼
-   Reconciler ──── change detected? ──no──→ EXIT
-        │ yes
-        ▼
-   S3 Manifest (KMS encrypted)
-        │ PutObject
-        ▼
-   EventBridge Rule
-        │
-        ▼
-   Step Function
-   ├── Lambda 1 (Parser): validate, grace period, rehire filter
-   └── Lambda 2 (Worker): 13-step IAM cleanup → delete user
-        │
-        ▼
-   Audit: DynamoDB + S3 + warehouse ingest-back
-```
+
+## Security Guardrails
+
+- **Deny policies**: Root, `break-glass-*`, and `emergency-*` accounts are protected by explicit IAM deny — the pipeline cannot touch them.
+- **Grace period**: 7-day default window before remediation (configurable). HR corrections within this window prevent accidental deletion.
+- **Rehire safety**: 8 scenarios handled. Active employees with same IAM are always skipped.
+- **Cross-account scoped**: STS AssumeRole limited by `aws:PrincipalOrgID` condition — cannot escape the AWS Organization.
+- **Encryption**: S3 manifests KMS-encrypted. DynamoDB encryption at rest. Lambda env vars encrypted.
+- **VPC isolation**: Both Lambdas run in VPC with no public internet (NAT gateway for AWS API calls only).
+- **Audit trail**: Every action dual-written to DynamoDB + S3. Ingest-back to source warehouse for reconciliation.
 
 ## Rehire Safety
 

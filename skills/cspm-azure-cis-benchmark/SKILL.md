@@ -36,30 +36,39 @@ v2.1, plus Azure AI Foundry security controls. Each check mapped to NIST CSF 2.0
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    subgraph AZ["Azure Subscription — read-only"]
+        ENTRA["Entra ID + RBAC<br/>7 checks"]
+        STOR["Storage Accounts<br/>4 checks"]
+        MON["Monitor / Activity<br/>4 checks"]
+        NSG["NSG / VNet<br/>4 checks"]
+        AIF["AI Foundry<br/>5 checks"]
+    end
+
+    CHK["checks.py<br/>19 CIS v2.1 + 5 AI Foundry<br/>Reader role only"]
+
+    ENTRA --> CHK
+    STOR --> CHK
+    MON --> CHK
+    NSG --> CHK
+    AIF --> CHK
+
+    CHK --> JSON["JSON"]
+    CHK --> CON["Console summary"]
+
+    style AZ fill:#1e293b,stroke:#475569,color:#e2e8f0
+    style CHK fill:#172554,stroke:#3b82f6,color:#e2e8f0
+    style AIF fill:#14532d,stroke:#22c55e,color:#e2e8f0
 ```
-  ┌─────────────────────────────────────────────────────────────────┐
-  │                    Azure Subscription                            │
-  │                                                                  │
-  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-  │  │ Entra ID │  │ Storage  │  │ Monitor  │  │  NSG /   │       │
-  │  │  + RBAC  │  │ Accounts │  │ Activity │  │  VNet    │       │
-  │  │ 7 checks │  │ 4 checks │  │ 4 checks │  │ 4 checks │       │
-  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
-  │       └──────────────┴──────┬──────┴──────────────┘              │
-  └─────────────────────────────┼────────────────────────────────────┘
-                                │ azure SDKs (Reader role)
-                                ▼
-                  ┌──────────────────────────┐
-                  │   checks.py              │
-                  │   19 CIS v2.1 controls   │
-                  │   + 5 AI Foundry checks  │
-                  │                          │
-                  │   Reader role only       │
-                  │   (no write access)      │
-                  └─────────────┬────────────┘
-                                │
-                          JSON / Console
-```
+
+## Security Guardrails
+
+- **Read-only**: Requires `Reader` role only. Zero write permissions.
+- **No credentials stored**: Azure credentials from `DefaultAzureCredential` (CLI, managed identity, env).
+- **No data exfiltration**: Results stay local. No calls beyond Azure SDK.
+- **AI Foundry safe**: Checks managed identity, private endpoints, CMK — does not access model endpoints or data.
+- **Idempotent**: Run as often as needed with no side effects.
 
 ## Controls — CIS Azure Foundations v2.1 (key controls)
 

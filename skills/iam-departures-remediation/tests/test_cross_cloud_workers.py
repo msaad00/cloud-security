@@ -11,9 +11,13 @@ Each cloud worker is tested with mocked SDKs to verify:
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import pytest
-from src.lambda_worker.clouds import (
+from lambda_worker.clouds import (
     CloudProvider,
     RemediationResult,
     RemediationStatus,
