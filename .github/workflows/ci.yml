@@ -71,7 +71,7 @@ jobs:
       - working-directory: skills/discover-environment
         run: pytest tests/ -v -o "testpaths=tests"
 
-  agent-bom-scan:
+  agent-bom:
     runs-on: ubuntu-latest
     needs: lint
     continue-on-error: true
@@ -81,34 +81,27 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install agent-bom
-      - name: Scan skills source code
-        run: agent-bom code skills/ -f json -o agent-bom-results.json --fail-on-severity critical || true
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: agent-bom-scan-results
-          path: agent-bom-results.json
-          if-no-files-found: ignore
-
-  agent-bom-skills-audit:
-    runs-on: ubuntu-latest
-    needs: lint
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install agent-bom
+      - name: Scan code for AI components
+        run: agent-bom code skills/ -f json -o code-scan.json || true
       - name: Audit skill definitions
-        run: agent-bom skills scan skills/ -f json -o skills-audit.json || true
-      - name: Upload results
+        run: agent-bom skills scan skills/ -f json -o skills-audit.json --verbose || true
+      - name: Scan filesystem for packages and CVEs
+        run: agent-bom fs skills/ -f json -o fs-scan.json || true
+      - name: Print results summary
+        if: always()
+        run: |
+          echo "=== Code Scan ===" && cat code-scan.json 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "No results"
+          echo "=== Skills Audit ===" && cat skills-audit.json 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "No results"
+          echo "=== FS Scan ===" && cat fs-scan.json 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "No results"
+      - name: Upload scan artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: agent-bom-skills-audit
-          path: skills-audit.json
+          name: agent-bom-results
+          path: |
+            code-scan.json
+            skills-audit.json
+            fs-scan.json
           if-no-files-found: ignore
 
   validate-cloudformation:
@@ -145,7 +138,6 @@ jobs:
       - run: bandit -r skills/ -c pyproject.toml --severity-level medium || true
       - name: Check for hardcoded secrets
         run: |
-          # Scan source code only (exclude tests — test fixtures use fake keys)
           ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/src/ --include="*.py" || exit 1
           ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/src/ --include="*.py" || exit 1
           ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/src/ --include="*.py" || exit 1
