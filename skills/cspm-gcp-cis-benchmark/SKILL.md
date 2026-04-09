@@ -35,31 +35,39 @@ plus Vertex AI security controls. Each check mapped to NIST CSF 2.0.
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    subgraph GCP["GCP Project — read-only"]
+        IAM["IAM & Service Accounts<br/>7 checks"]
+        GCS["Cloud Storage<br/>4 checks"]
+        LOG["Cloud Logging<br/>4 checks"]
+        NET["VPC / Firewall<br/>5 checks"]
+        VAI["Vertex AI<br/>5 checks"]
+    end
+
+    CHK["checks.py<br/>20 CIS v3.0 + 5 Vertex AI<br/>roles/viewer + iam.securityReviewer"]
+
+    IAM --> CHK
+    GCS --> CHK
+    LOG --> CHK
+    NET --> CHK
+    VAI --> CHK
+
+    CHK --> JSON["JSON"]
+    CHK --> CON["Console summary"]
+
+    style GCP fill:#1e293b,stroke:#475569,color:#e2e8f0
+    style CHK fill:#172554,stroke:#3b82f6,color:#e2e8f0
+    style VAI fill:#14532d,stroke:#22c55e,color:#e2e8f0
 ```
-  ┌─────────────────────────────────────────────────────────────────┐
-  │                       GCP Project                                │
-  │                                                                  │
-  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐       │
-  │  │  IAM &   │  │  Cloud   │  │  Cloud   │  │  VPC     │       │
-  │  │  Service │  │  Storage │  │  Logging │  │  Network │       │
-  │  │  Accounts│  │  Buckets │  │  + Audit │  │  Firewall│       │
-  │  │  7 checks│  │  4 checks│  │  4 checks│  │  5 checks│       │
-  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘       │
-  │       └──────────────┴──────┬──────┴──────────────┘              │
-  └─────────────────────────────┼────────────────────────────────────┘
-                                │ google-cloud SDKs (read-only)
-                                ▼
-                  ┌──────────────────────────┐
-                  │   checks.py              │
-                  │   20 CIS v3.0 controls   │
-                  │   + 5 Vertex AI controls │
-                  │                          │
-                  │   roles/viewer +         │
-                  │   iam.securityReviewer   │
-                  └─────────────┬────────────┘
-                                │
-                          JSON / Console
-```
+
+## Security Guardrails
+
+- **Read-only**: Requires `roles/viewer` + `roles/iam.securityReviewer`. Zero write permissions.
+- **No credentials stored**: GCP credentials from ADC (Application Default Credentials) only.
+- **No data exfiltration**: Results stay local. No calls beyond GCP SDK.
+- **Vertex AI safe**: Checks endpoint auth, VPC-SC, CMEK — does not access model data or training data.
+- **Idempotent**: Run as often as needed with no side effects.
 
 ## Controls — CIS GCP Foundations v3.0 (key controls)
 

@@ -30,7 +30,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install boto3 moto pytest
-      - run: cd skills/iam-departures-remediation && pytest tests/ -v
+      - working-directory: skills/iam-departures-remediation
+        run: PYTHONPATH=src pytest tests/ -v --override-ini="testpaths=tests"
 
   validate-cloudformation:
     runs-on: ubuntu-latest
@@ -66,7 +67,6 @@ jobs:
       - run: bandit -r skills/ -c pyproject.toml --severity-level medium || true
       - name: Check for hardcoded secrets
         run: |
-          # Fail if any obvious secret patterns found in Python source
           ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/ --include="*.py" || exit 1
           ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/ --include="*.py" || exit 1
           ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/ --include="*.py" || exit 1
