@@ -22,10 +22,10 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 
-
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Finding:
@@ -44,22 +44,32 @@ class Finding:
 # Section 1 — IAM
 # ---------------------------------------------------------------------------
 
+
 def check_1_1_root_mfa(iam) -> Finding:
     """CIS 1.1 — MFA on root account."""
     try:
         summary = iam.get_account_summary()["SummaryMap"]
         has_mfa = summary.get("AccountMFAEnabled", 0) == 1
         return Finding(
-            control_id="1.1", title="MFA on root account", section="iam",
-            severity="CRITICAL", status="PASS" if has_mfa else "FAIL",
+            control_id="1.1",
+            title="MFA on root account",
+            section="iam",
+            severity="CRITICAL",
+            status="PASS" if has_mfa else "FAIL",
             detail="Root MFA enabled" if has_mfa else "Root account has no MFA",
-            nist_csf="PR.AC-1", iso_27001="A.8.5",
+            nist_csf="PR.AC-1",
+            iso_27001="A.8.5",
         )
     except ClientError as e:
         return Finding(
-            control_id="1.1", title="MFA on root account", section="iam",
-            severity="CRITICAL", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-1", iso_27001="A.8.5",
+            control_id="1.1",
+            title="MFA on root account",
+            section="iam",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
+            iso_27001="A.8.5",
         )
 
 
@@ -77,16 +87,26 @@ def check_1_2_user_mfa(iam) -> Finding:
             if not mfa_devices:
                 no_mfa.append(user["UserName"])
         return Finding(
-            control_id="1.2", title="MFA for console users", section="iam",
-            severity="HIGH", status="FAIL" if no_mfa else "PASS",
+            control_id="1.2",
+            title="MFA for console users",
+            section="iam",
+            severity="HIGH",
+            status="FAIL" if no_mfa else "PASS",
             detail=f"{len(no_mfa)} console users without MFA" if no_mfa else "All console users have MFA",
-            nist_csf="PR.AC-1", iso_27001="A.8.5", resources=no_mfa,
+            nist_csf="PR.AC-1",
+            iso_27001="A.8.5",
+            resources=no_mfa,
         )
     except ClientError as e:
         return Finding(
-            control_id="1.2", title="MFA for console users", section="iam",
-            severity="HIGH", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-1", iso_27001="A.8.5",
+            control_id="1.2",
+            title="MFA for console users",
+            section="iam",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
+            iso_27001="A.8.5",
         )
 
 
@@ -109,16 +129,26 @@ def check_1_3_stale_credentials(iam) -> Finding:
                 except (ValueError, IndexError):
                     pass
         return Finding(
-            control_id="1.3", title="Credentials unused 45+ days", section="iam",
-            severity="MEDIUM", status="FAIL" if stale else "PASS",
+            control_id="1.3",
+            title="Credentials unused 45+ days",
+            section="iam",
+            severity="MEDIUM",
+            status="FAIL" if stale else "PASS",
             detail=f"{len(stale)} users with stale credentials" if stale else "No stale credentials",
-            nist_csf="PR.AC-1", iso_27001="A.5.18", resources=stale,
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.18",
+            resources=stale,
         )
     except ClientError as e:
         return Finding(
-            control_id="1.3", title="Credentials unused 45+ days", section="iam",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-1", iso_27001="A.5.18",
+            control_id="1.3",
+            title="Credentials unused 45+ days",
+            section="iam",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.18",
         )
 
 
@@ -134,16 +164,26 @@ def check_1_4_key_rotation(iam) -> Finding:
                     if age > 90:
                         old_keys.append(f"{user['UserName']}:{key['AccessKeyId']} ({age}d)")
         return Finding(
-            control_id="1.4", title="Access keys rotated 90 days", section="iam",
-            severity="MEDIUM", status="FAIL" if old_keys else "PASS",
+            control_id="1.4",
+            title="Access keys rotated 90 days",
+            section="iam",
+            severity="MEDIUM",
+            status="FAIL" if old_keys else "PASS",
             detail=f"{len(old_keys)} keys older than 90 days" if old_keys else "All keys within 90 days",
-            nist_csf="PR.AC-1", iso_27001="A.5.17", resources=old_keys,
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.17",
+            resources=old_keys,
         )
     except ClientError as e:
         return Finding(
-            control_id="1.4", title="Access keys rotated 90 days", section="iam",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-1", iso_27001="A.5.17",
+            control_id="1.4",
+            title="Access keys rotated 90 days",
+            section="iam",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.17",
         )
 
 
@@ -163,16 +203,25 @@ def check_1_5_password_policy(iam) -> Finding:
         if not policy.get("RequireLowercaseCharacters", False):
             issues.append("RequireLowercase=false")
         return Finding(
-            control_id="1.5", title="Password policy strength", section="iam",
-            severity="MEDIUM", status="FAIL" if issues else "PASS",
+            control_id="1.5",
+            title="Password policy strength",
+            section="iam",
+            severity="MEDIUM",
+            status="FAIL" if issues else "PASS",
             detail="; ".join(issues) if issues else "Password policy meets CIS requirements",
-            nist_csf="PR.AC-1", iso_27001="A.5.17",
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.17",
         )
     except iam.exceptions.NoSuchEntityException:
         return Finding(
-            control_id="1.5", title="Password policy strength", section="iam",
-            severity="MEDIUM", status="FAIL", detail="No password policy configured",
-            nist_csf="PR.AC-1", iso_27001="A.5.17",
+            control_id="1.5",
+            title="Password policy strength",
+            section="iam",
+            severity="MEDIUM",
+            status="FAIL",
+            detail="No password policy configured",
+            nist_csf="PR.AC-1",
+            iso_27001="A.5.17",
         )
 
 
@@ -182,16 +231,25 @@ def check_1_6_no_root_keys(iam) -> Finding:
         summary = iam.get_account_summary()["SummaryMap"]
         root_keys = summary.get("AccountAccessKeysPresent", 0)
         return Finding(
-            control_id="1.6", title="No root access keys", section="iam",
-            severity="CRITICAL", status="PASS" if root_keys == 0 else "FAIL",
+            control_id="1.6",
+            title="No root access keys",
+            section="iam",
+            severity="CRITICAL",
+            status="PASS" if root_keys == 0 else "FAIL",
             detail="No root access keys" if root_keys == 0 else f"Root has {root_keys} access key(s)",
-            nist_csf="PR.AC-4", iso_27001="A.8.2",
+            nist_csf="PR.AC-4",
+            iso_27001="A.8.2",
         )
     except ClientError as e:
         return Finding(
-            control_id="1.6", title="No root access keys", section="iam",
-            severity="CRITICAL", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-4", iso_27001="A.8.2",
+            control_id="1.6",
+            title="No root access keys",
+            section="iam",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-4",
+            iso_27001="A.8.2",
         )
 
 
@@ -204,22 +262,33 @@ def check_1_7_no_inline_policies(iam) -> Finding:
             if policies:
                 inline_users.append(user["UserName"])
         return Finding(
-            control_id="1.7", title="No inline IAM policies", section="iam",
-            severity="LOW", status="FAIL" if inline_users else "PASS",
+            control_id="1.7",
+            title="No inline IAM policies",
+            section="iam",
+            severity="LOW",
+            status="FAIL" if inline_users else "PASS",
             detail=f"{len(inline_users)} users with inline policies" if inline_users else "No inline policies",
-            nist_csf="PR.AC-4", iso_27001="A.5.15", resources=inline_users,
+            nist_csf="PR.AC-4",
+            iso_27001="A.5.15",
+            resources=inline_users,
         )
     except ClientError as e:
         return Finding(
-            control_id="1.7", title="No inline IAM policies", section="iam",
-            severity="LOW", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-4", iso_27001="A.5.15",
+            control_id="1.7",
+            title="No inline IAM policies",
+            section="iam",
+            severity="LOW",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-4",
+            iso_27001="A.5.15",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 2 — Storage
 # ---------------------------------------------------------------------------
+
 
 def check_2_1_s3_encryption(s3) -> Finding:
     """CIS 2.1 — S3 default encryption."""
@@ -233,16 +302,26 @@ def check_2_1_s3_encryption(s3) -> Finding:
                 if e.response["Error"]["Code"] == "ServerSideEncryptionConfigurationNotFoundError":
                     unencrypted.append(bucket["Name"])
         return Finding(
-            control_id="2.1", title="S3 default encryption", section="storage",
-            severity="HIGH", status="FAIL" if unencrypted else "PASS",
+            control_id="2.1",
+            title="S3 default encryption",
+            section="storage",
+            severity="HIGH",
+            status="FAIL" if unencrypted else "PASS",
             detail=f"{len(unencrypted)} buckets without encryption" if unencrypted else "All buckets encrypted",
-            nist_csf="PR.DS-1", iso_27001="A.8.24", resources=unencrypted,
+            nist_csf="PR.DS-1",
+            iso_27001="A.8.24",
+            resources=unencrypted,
         )
     except ClientError as e:
         return Finding(
-            control_id="2.1", title="S3 default encryption", section="storage",
-            severity="HIGH", status="ERROR", detail=str(e),
-            nist_csf="PR.DS-1", iso_27001="A.8.24",
+            control_id="2.1",
+            title="S3 default encryption",
+            section="storage",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.DS-1",
+            iso_27001="A.8.24",
         )
 
 
@@ -256,16 +335,26 @@ def check_2_2_s3_logging(s3) -> Finding:
             if "LoggingEnabled" not in logging_config:
                 no_logging.append(bucket["Name"])
         return Finding(
-            control_id="2.2", title="S3 server access logging", section="storage",
-            severity="MEDIUM", status="FAIL" if no_logging else "PASS",
+            control_id="2.2",
+            title="S3 server access logging",
+            section="storage",
+            severity="MEDIUM",
+            status="FAIL" if no_logging else "PASS",
             detail=f"{len(no_logging)} buckets without logging" if no_logging else "All buckets have logging",
-            nist_csf="DE.AE-3", iso_27001="A.8.15", resources=no_logging,
+            nist_csf="DE.AE-3",
+            iso_27001="A.8.15",
+            resources=no_logging,
         )
     except ClientError as e:
         return Finding(
-            control_id="2.2", title="S3 server access logging", section="storage",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="DE.AE-3", iso_27001="A.8.15",
+            control_id="2.2",
+            title="S3 server access logging",
+            section="storage",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.AE-3",
+            iso_27001="A.8.15",
         )
 
 
@@ -277,26 +366,40 @@ def check_2_3_s3_public_access(s3) -> Finding:
         for bucket in buckets:
             try:
                 pab = s3.get_public_access_block(Bucket=bucket["Name"])["PublicAccessBlockConfiguration"]
-                if not all([
-                    pab.get("BlockPublicAcls", False),
-                    pab.get("IgnorePublicAcls", False),
-                    pab.get("BlockPublicPolicy", False),
-                    pab.get("RestrictPublicBuckets", False),
-                ]):
+                if not all(
+                    [
+                        pab.get("BlockPublicAcls", False),
+                        pab.get("IgnorePublicAcls", False),
+                        pab.get("BlockPublicPolicy", False),
+                        pab.get("RestrictPublicBuckets", False),
+                    ]
+                ):
                     public_buckets.append(bucket["Name"])
             except ClientError:
                 public_buckets.append(bucket["Name"])
         return Finding(
-            control_id="2.3", title="S3 public access blocked", section="storage",
-            severity="CRITICAL", status="FAIL" if public_buckets else "PASS",
-            detail=f"{len(public_buckets)} buckets without full public access block" if public_buckets else "All buckets block public access",
-            nist_csf="PR.AC-3", iso_27001="A.8.3", resources=public_buckets,
+            control_id="2.3",
+            title="S3 public access blocked",
+            section="storage",
+            severity="CRITICAL",
+            status="FAIL" if public_buckets else "PASS",
+            detail=f"{len(public_buckets)} buckets without full public access block"
+            if public_buckets
+            else "All buckets block public access",
+            nist_csf="PR.AC-3",
+            iso_27001="A.8.3",
+            resources=public_buckets,
         )
     except ClientError as e:
         return Finding(
-            control_id="2.3", title="S3 public access blocked", section="storage",
-            severity="CRITICAL", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-3", iso_27001="A.8.3",
+            control_id="2.3",
+            title="S3 public access blocked",
+            section="storage",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-3",
+            iso_27001="A.8.3",
         )
 
 
@@ -310,22 +413,33 @@ def check_2_4_s3_versioning(s3) -> Finding:
             if versioning.get("Status") != "Enabled":
                 no_versioning.append(bucket["Name"])
         return Finding(
-            control_id="2.4", title="S3 versioning enabled", section="storage",
-            severity="MEDIUM", status="FAIL" if no_versioning else "PASS",
+            control_id="2.4",
+            title="S3 versioning enabled",
+            section="storage",
+            severity="MEDIUM",
+            status="FAIL" if no_versioning else "PASS",
             detail=f"{len(no_versioning)} buckets without versioning" if no_versioning else "All buckets versioned",
-            nist_csf="PR.DS-1", iso_27001="A.8.13", resources=no_versioning,
+            nist_csf="PR.DS-1",
+            iso_27001="A.8.13",
+            resources=no_versioning,
         )
     except ClientError as e:
         return Finding(
-            control_id="2.4", title="S3 versioning enabled", section="storage",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="PR.DS-1", iso_27001="A.8.13",
+            control_id="2.4",
+            title="S3 versioning enabled",
+            section="storage",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.DS-1",
+            iso_27001="A.8.13",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 3 — Logging
 # ---------------------------------------------------------------------------
+
 
 def check_3_1_cloudtrail_multiregion(ct) -> Finding:
     """CIS 3.1 — CloudTrail multi-region enabled."""
@@ -338,16 +452,26 @@ def check_3_1_cloudtrail_multiregion(ct) -> Finding:
             if status.get("IsLogging"):
                 active_mr.append(name)
         return Finding(
-            control_id="3.1", title="CloudTrail multi-region", section="logging",
-            severity="CRITICAL", status="PASS" if active_mr else "FAIL",
+            control_id="3.1",
+            title="CloudTrail multi-region",
+            section="logging",
+            severity="CRITICAL",
+            status="PASS" if active_mr else "FAIL",
             detail=f"{len(active_mr)} active multi-region trail(s)" if active_mr else "No active multi-region trail",
-            nist_csf="DE.AE-3", iso_27001="A.8.15", resources=active_mr,
+            nist_csf="DE.AE-3",
+            iso_27001="A.8.15",
+            resources=active_mr,
         )
     except ClientError as e:
         return Finding(
-            control_id="3.1", title="CloudTrail multi-region", section="logging",
-            severity="CRITICAL", status="ERROR", detail=str(e),
-            nist_csf="DE.AE-3", iso_27001="A.8.15",
+            control_id="3.1",
+            title="CloudTrail multi-region",
+            section="logging",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.AE-3",
+            iso_27001="A.8.15",
         )
 
 
@@ -357,16 +481,26 @@ def check_3_2_cloudtrail_validation(ct) -> Finding:
         trails = ct.describe_trails()["trailList"]
         no_validation = [t["Name"] for t in trails if not t.get("LogFileValidationEnabled")]
         return Finding(
-            control_id="3.2", title="CloudTrail log validation", section="logging",
-            severity="HIGH", status="FAIL" if no_validation else "PASS",
+            control_id="3.2",
+            title="CloudTrail log validation",
+            section="logging",
+            severity="HIGH",
+            status="FAIL" if no_validation else "PASS",
             detail=f"{len(no_validation)} trails without log validation" if no_validation else "All trails have log validation",
-            nist_csf="PR.DS-6", iso_27001="A.8.15", resources=no_validation,
+            nist_csf="PR.DS-6",
+            iso_27001="A.8.15",
+            resources=no_validation,
         )
     except ClientError as e:
         return Finding(
-            control_id="3.2", title="CloudTrail log validation", section="logging",
-            severity="HIGH", status="ERROR", detail=str(e),
-            nist_csf="PR.DS-6", iso_27001="A.8.15",
+            control_id="3.2",
+            title="CloudTrail log validation",
+            section="logging",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.DS-6",
+            iso_27001="A.8.15",
         )
 
 
@@ -381,26 +515,40 @@ def check_3_3_cloudtrail_s3_not_public(ct, s3) -> Finding:
                 continue
             try:
                 pab = s3.get_public_access_block(Bucket=bucket)["PublicAccessBlockConfiguration"]
-                if not all([
-                    pab.get("BlockPublicAcls", False),
-                    pab.get("IgnorePublicAcls", False),
-                    pab.get("BlockPublicPolicy", False),
-                    pab.get("RestrictPublicBuckets", False),
-                ]):
+                if not all(
+                    [
+                        pab.get("BlockPublicAcls", False),
+                        pab.get("IgnorePublicAcls", False),
+                        pab.get("BlockPublicPolicy", False),
+                        pab.get("RestrictPublicBuckets", False),
+                    ]
+                ):
                     public_trail_buckets.append(bucket)
             except ClientError:
                 public_trail_buckets.append(bucket)
         return Finding(
-            control_id="3.3", title="CloudTrail S3 not public", section="logging",
-            severity="CRITICAL", status="FAIL" if public_trail_buckets else "PASS",
-            detail=f"{len(public_trail_buckets)} trail buckets without public access block" if public_trail_buckets else "All trail buckets block public access",
-            nist_csf="PR.AC-3", iso_27001="A.8.3", resources=public_trail_buckets,
+            control_id="3.3",
+            title="CloudTrail S3 not public",
+            section="logging",
+            severity="CRITICAL",
+            status="FAIL" if public_trail_buckets else "PASS",
+            detail=f"{len(public_trail_buckets)} trail buckets without public access block"
+            if public_trail_buckets
+            else "All trail buckets block public access",
+            nist_csf="PR.AC-3",
+            iso_27001="A.8.3",
+            resources=public_trail_buckets,
         )
     except ClientError as e:
         return Finding(
-            control_id="3.3", title="CloudTrail S3 not public", section="logging",
-            severity="CRITICAL", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-3", iso_27001="A.8.3",
+            control_id="3.3",
+            title="CloudTrail S3 not public",
+            section="logging",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-3",
+            iso_27001="A.8.3",
         )
 
 
@@ -409,22 +557,32 @@ def check_3_4_cloudwatch_alarms(cw) -> Finding:
     try:
         alarms = cw.describe_alarms()["MetricAlarms"]
         return Finding(
-            control_id="3.4", title="CloudWatch alarms configured", section="logging",
-            severity="MEDIUM", status="PASS" if alarms else "FAIL",
+            control_id="3.4",
+            title="CloudWatch alarms configured",
+            section="logging",
+            severity="MEDIUM",
+            status="PASS" if alarms else "FAIL",
             detail=f"{len(alarms)} alarm(s) configured" if alarms else "No CloudWatch alarms configured",
-            nist_csf="DE.CM-1", iso_27001="A.8.16",
+            nist_csf="DE.CM-1",
+            iso_27001="A.8.16",
         )
     except ClientError as e:
         return Finding(
-            control_id="3.4", title="CloudWatch alarms configured", section="logging",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="DE.CM-1", iso_27001="A.8.16",
+            control_id="3.4",
+            title="CloudWatch alarms configured",
+            section="logging",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.CM-1",
+            iso_27001="A.8.16",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 4 — Networking
 # ---------------------------------------------------------------------------
+
 
 def _check_unrestricted_port(ec2, port: int, control_id: str, title: str) -> Finding:
     """Check for 0.0.0.0/0 on a specific port in security groups."""
@@ -443,16 +601,26 @@ def _check_unrestricted_port(ec2, port: int, control_id: str, title: str) -> Fin
                         if ip_range.get("CidrIpv6") == "::/0":
                             open_sgs.append(f"{sg['GroupId']} ({sg.get('GroupName', '')})")
         return Finding(
-            control_id=control_id, title=title, section="networking",
-            severity="HIGH", status="FAIL" if open_sgs else "PASS",
+            control_id=control_id,
+            title=title,
+            section="networking",
+            severity="HIGH",
+            status="FAIL" if open_sgs else "PASS",
             detail=f"{len(open_sgs)} SGs allow 0.0.0.0/0:{port}" if open_sgs else f"No SGs allow unrestricted port {port}",
-            nist_csf="PR.AC-5", iso_27001="A.8.20", resources=open_sgs,
+            nist_csf="PR.AC-5",
+            iso_27001="A.8.20",
+            resources=open_sgs,
         )
     except ClientError as e:
         return Finding(
-            control_id=control_id, title=title, section="networking",
-            severity="HIGH", status="ERROR", detail=str(e),
-            nist_csf="PR.AC-5", iso_27001="A.8.20",
+            control_id=control_id,
+            title=title,
+            section="networking",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-5",
+            iso_27001="A.8.20",
         )
 
 
@@ -474,16 +642,26 @@ def check_4_3_vpc_flow_logs(ec2) -> Finding:
         vpc_ids_with_logs = {fl["ResourceId"] for fl in flow_logs if fl.get("ResourceId")}
         no_logs = [v["VpcId"] for v in vpcs if v["VpcId"] not in vpc_ids_with_logs]
         return Finding(
-            control_id="4.3", title="VPC flow logs enabled", section="networking",
-            severity="MEDIUM", status="FAIL" if no_logs else "PASS",
+            control_id="4.3",
+            title="VPC flow logs enabled",
+            section="networking",
+            severity="MEDIUM",
+            status="FAIL" if no_logs else "PASS",
             detail=f"{len(no_logs)} VPCs without flow logs" if no_logs else "All VPCs have flow logs",
-            nist_csf="DE.CM-1", iso_27001="A.8.16", resources=no_logs,
+            nist_csf="DE.CM-1",
+            iso_27001="A.8.16",
+            resources=no_logs,
         )
     except ClientError as e:
         return Finding(
-            control_id="4.3", title="VPC flow logs enabled", section="networking",
-            severity="MEDIUM", status="ERROR", detail=str(e),
-            nist_csf="DE.CM-1", iso_27001="A.8.16",
+            control_id="4.3",
+            title="VPC flow logs enabled",
+            section="networking",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.CM-1",
+            iso_27001="A.8.16",
         )
 
 
@@ -493,12 +671,21 @@ def check_4_3_vpc_flow_logs(ec2) -> Finding:
 
 SECTIONS: dict[str, list] = {
     "iam": [
-        check_1_1_root_mfa, check_1_2_user_mfa, check_1_3_stale_credentials,
-        check_1_4_key_rotation, check_1_5_password_policy, check_1_6_no_root_keys,
+        check_1_1_root_mfa,
+        check_1_2_user_mfa,
+        check_1_3_stale_credentials,
+        check_1_4_key_rotation,
+        check_1_5_password_policy,
+        check_1_6_no_root_keys,
         check_1_7_no_inline_policies,
     ],
     "storage": [check_2_1_s3_encryption, check_2_2_s3_logging, check_2_3_s3_public_access, check_2_4_s3_versioning],
-    "logging": [check_3_1_cloudtrail_multiregion, check_3_2_cloudtrail_validation, check_3_3_cloudtrail_s3_not_public, check_3_4_cloudwatch_alarms],
+    "logging": [
+        check_3_1_cloudtrail_multiregion,
+        check_3_2_cloudtrail_validation,
+        check_3_3_cloudtrail_s3_not_public,
+        check_3_4_cloudwatch_alarms,
+    ],
     "networking": [check_4_1_no_unrestricted_ssh, check_4_2_no_unrestricted_rdp, check_4_3_vpc_flow_logs],
 }
 
@@ -556,9 +743,9 @@ def print_summary(findings: list[Finding]) -> None:
     errors = sum(1 for f in findings if f.status == "ERROR")
     total = len(findings)
 
-    print(f"\n{'='*60}")
-    print(f"  CIS AWS Foundations v3.0 — Assessment Results")
-    print(f"{'='*60}\n")
+    print(f"\n{'=' * 60}")
+    print("  CIS AWS Foundations v3.0 — Assessment Results")
+    print(f"{'=' * 60}\n")
 
     current_section = ""
     for f in findings:
@@ -575,11 +762,11 @@ def print_summary(findings: list[Finding]) -> None:
                 if len(f.resources) > 5:
                     print(f"         ... and {len(f.resources) - 5} more")
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     pct = (passed / total * 100) if total else 0
     print(f"  Score: {passed}/{total} passed ({pct:.0f}%)")
     print(f"  PASS: {passed}  FAIL: {failed}  ERROR: {errors}")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
 
 def main():

@@ -18,10 +18,10 @@ import json
 import sys
 from dataclasses import asdict, dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Finding:
@@ -39,6 +39,7 @@ class Finding:
 # Section 2 — Storage
 # ---------------------------------------------------------------------------
 
+
 def check_2_3_no_public_blob(storage_client, subscription_id: str) -> Finding:
     """CIS 2.3 — No public blob access."""
     try:
@@ -48,15 +49,24 @@ def check_2_3_no_public_blob(storage_client, subscription_id: str) -> Finding:
             if account.allow_blob_public_access:
                 public_accounts.append(account.name)
         return Finding(
-            control_id="2.3", title="No public blob access", section="storage",
-            severity="CRITICAL", status="FAIL" if public_accounts else "PASS",
+            control_id="2.3",
+            title="No public blob access",
+            section="storage",
+            severity="CRITICAL",
+            status="FAIL" if public_accounts else "PASS",
             detail=f"{len(public_accounts)} accounts allow public blob access" if public_accounts else "No public blob access",
-            nist_csf="PR.AC-3", resources=public_accounts,
+            nist_csf="PR.AC-3",
+            resources=public_accounts,
         )
     except Exception as e:
         return Finding(
-            control_id="2.3", title="No public blob access", section="storage",
-            severity="CRITICAL", status="ERROR", detail=str(e), nist_csf="PR.AC-3",
+            control_id="2.3",
+            title="No public blob access",
+            section="storage",
+            severity="CRITICAL",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-3",
         )
 
 
@@ -69,15 +79,24 @@ def check_2_2_https_only(storage_client, subscription_id: str) -> Finding:
             if not account.enable_https_traffic_only:
                 not_https.append(account.name)
         return Finding(
-            control_id="2.2", title="Storage HTTPS-only", section="storage",
-            severity="HIGH", status="FAIL" if not_https else "PASS",
+            control_id="2.2",
+            title="Storage HTTPS-only",
+            section="storage",
+            severity="HIGH",
+            status="FAIL" if not_https else "PASS",
             detail=f"{len(not_https)} accounts allow non-HTTPS" if not_https else "All accounts enforce HTTPS",
-            nist_csf="PR.DS-2", resources=not_https,
+            nist_csf="PR.DS-2",
+            resources=not_https,
         )
     except Exception as e:
         return Finding(
-            control_id="2.2", title="Storage HTTPS-only", section="storage",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.DS-2",
+            control_id="2.2",
+            title="Storage HTTPS-only",
+            section="storage",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.DS-2",
         )
 
 
@@ -90,21 +109,31 @@ def check_2_4_network_rules(storage_client, subscription_id: str) -> Finding:
             if account.network_rule_set and account.network_rule_set.default_action == "Allow":
                 open_accounts.append(account.name)
         return Finding(
-            control_id="2.4", title="Storage network deny-by-default", section="storage",
-            severity="HIGH", status="FAIL" if open_accounts else "PASS",
+            control_id="2.4",
+            title="Storage network deny-by-default",
+            section="storage",
+            severity="HIGH",
+            status="FAIL" if open_accounts else "PASS",
             detail=f"{len(open_accounts)} accounts default-allow" if open_accounts else "All accounts deny by default",
-            nist_csf="PR.AC-5", resources=open_accounts,
+            nist_csf="PR.AC-5",
+            resources=open_accounts,
         )
     except Exception as e:
         return Finding(
-            control_id="2.4", title="Storage network deny-by-default", section="storage",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-5",
+            control_id="2.4",
+            title="Storage network deny-by-default",
+            section="storage",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-5",
         )
 
 
 # ---------------------------------------------------------------------------
 # Section 4 — Networking
 # ---------------------------------------------------------------------------
+
 
 def check_4_1_no_unrestricted_ssh(network_client, subscription_id: str) -> Finding:
     """CIS 4.1 — No unrestricted SSH in NSGs."""
@@ -123,8 +152,7 @@ def _check_nsg_port(network_client, port: int, control_id: str, title: str) -> F
         open_rules = []
         for nsg in nsgs:
             for rule in nsg.security_rules or []:
-                if (rule.direction == "Inbound" and rule.access == "Allow"
-                        and rule.source_address_prefix in ("*", "0.0.0.0/0", "Internet")):
+                if rule.direction == "Inbound" and rule.access == "Allow" and rule.source_address_prefix in ("*", "0.0.0.0/0", "Internet"):
                     dest_ports = rule.destination_port_range or ""
                     if dest_ports == "*" or str(port) == dest_ports:
                         open_rules.append(f"{nsg.name}/{rule.name}")
@@ -136,15 +164,24 @@ def _check_nsg_port(network_client, port: int, control_id: str, title: str) -> F
                         except ValueError:
                             pass
         return Finding(
-            control_id=control_id, title=title, section="networking",
-            severity="HIGH", status="FAIL" if open_rules else "PASS",
+            control_id=control_id,
+            title=title,
+            section="networking",
+            severity="HIGH",
+            status="FAIL" if open_rules else "PASS",
             detail=f"{len(open_rules)} NSG rules allow 0.0.0.0/0:{port}" if open_rules else f"No unrestricted port {port}",
-            nist_csf="PR.AC-5", resources=open_rules,
+            nist_csf="PR.AC-5",
+            resources=open_rules,
         )
     except Exception as e:
         return Finding(
-            control_id=control_id, title=title, section="networking",
-            severity="HIGH", status="ERROR", detail=str(e), nist_csf="PR.AC-5",
+            control_id=control_id,
+            title=title,
+            section="networking",
+            severity="HIGH",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="PR.AC-5",
         )
 
 
@@ -154,26 +191,39 @@ def check_4_3_nsg_flow_logs(network_client, subscription_id: str) -> Finding:
         watchers = list(network_client.network_watchers.list_all())
         if not watchers:
             return Finding(
-                control_id="4.3", title="NSG flow logs enabled", section="networking",
-                severity="MEDIUM", status="FAIL", detail="No Network Watchers found",
+                control_id="4.3",
+                title="NSG flow logs enabled",
+                section="networking",
+                severity="MEDIUM",
+                status="FAIL",
+                detail="No Network Watchers found",
                 nist_csf="DE.CM-1",
             )
         return Finding(
-            control_id="4.3", title="NSG flow logs enabled", section="networking",
-            severity="MEDIUM", status="PASS",
+            control_id="4.3",
+            title="NSG flow logs enabled",
+            section="networking",
+            severity="MEDIUM",
+            status="PASS",
             detail=f"{len(watchers)} Network Watcher(s) found — verify flow logs per NSG",
             nist_csf="DE.CM-1",
         )
     except Exception as e:
         return Finding(
-            control_id="4.3", title="NSG flow logs enabled", section="networking",
-            severity="MEDIUM", status="ERROR", detail=str(e), nist_csf="DE.CM-1",
+            control_id="4.3",
+            title="NSG flow logs enabled",
+            section="networking",
+            severity="MEDIUM",
+            status="ERROR",
+            detail=str(e),
+            nist_csf="DE.CM-1",
         )
 
 
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
+
 
 def _status_symbol(status: str) -> str:
     return {"PASS": "\033[92m✓\033[0m", "FAIL": "\033[91m✗\033[0m", "ERROR": "\033[90m?\033[0m"}.get(status, "?")
@@ -186,8 +236,7 @@ def run_assessment(subscription_id: str, section: str | None = None) -> list[Fin
         from azure.mgmt.network import NetworkManagementClient
         from azure.mgmt.storage import StorageManagementClient
     except ImportError:
-        print("ERROR: Install Azure SDKs: pip install azure-identity "
-              "azure-mgmt-storage azure-mgmt-network")
+        print("ERROR: Install Azure SDKs: pip install azure-identity azure-mgmt-storage azure-mgmt-network")
         sys.exit(1)
 
     credential = DefaultAzureCredential()
@@ -221,9 +270,9 @@ def print_summary(findings: list[Finding]) -> None:
     passed = sum(1 for f in findings if f.status == "PASS")
     total = len(findings)
 
-    print(f"\n{'='*60}")
-    print(f"  CIS Azure Foundations v2.1 — Assessment Results")
-    print(f"{'='*60}\n")
+    print(f"\n{'=' * 60}")
+    print("  CIS Azure Foundations v2.1 — Assessment Results")
+    print(f"{'=' * 60}\n")
 
     current_section = ""
     for f in findings:
@@ -237,9 +286,9 @@ def print_summary(findings: list[Finding]) -> None:
                 print(f"         - {r}")
 
     pct = (passed / total * 100) if total else 0
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  Score: {passed}/{total} passed ({pct:.0f}%)")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
 
 def main():

@@ -18,9 +18,7 @@ logger.setLevel(logging.INFO)
 REMEDIATION_TABLE = os.environ.get("REMEDIATION_TABLE", "vuln-remediation-audit")
 FINDINGS_BUCKET = os.environ.get("FINDINGS_BUCKET", "vuln-remediation-findings")
 GRACE_PERIOD_HOURS = int(os.environ.get("GRACE_PERIOD_HOURS", "2"))
-PROTECTED_PACKAGES_SSM = os.environ.get(
-    "PROTECTED_PACKAGES_SSM", "/vuln-remediation/protected-packages"
-)
+PROTECTED_PACKAGES_SSM = os.environ.get("PROTECTED_PACKAGES_SSM", "/vuln-remediation/protected-packages")
 
 
 class Tier(str, Enum):
@@ -172,9 +170,7 @@ def _is_already_remediated(vuln_id: str, package_name: str) -> bool:
     try:
         ddb = boto3.resource("dynamodb")
         table = ddb.Table(REMEDIATION_TABLE)
-        resp = table.get_item(
-            Key={"vuln_id": vuln_id, "package_name": package_name}
-        )
+        resp = table.get_item(Key={"vuln_id": vuln_id, "package_name": package_name})
         item = resp.get("Item")
         if not item:
             return False
@@ -275,9 +271,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     actionable = [t for t in triaged if t.tier != Tier.SKIP]
     skipped = [t for t in triaged if t.tier == Tier.SKIP]
 
-    logger.info(
-        "Triage complete: %d actionable, %d skipped", len(actionable), len(skipped)
-    )
+    logger.info("Triage complete: %d actionable, %d skipped", len(actionable), len(skipped))
 
     # Log skipped to DynamoDB
     _log_skipped(skipped)

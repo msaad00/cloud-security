@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 import json
+import os
+
+# We test the source code directly by adding the src dir to path
+import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# We test the source code directly by adding the src dir to path
-import sys
-import os
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from reconciler.change_detect import ChangeDetector
+from reconciler.export import S3Exporter
 from reconciler.sources import (
     DepartureRecord,
     RemediationStatus,
     TerminationSource,
     get_source,
 )
-from reconciler.change_detect import ChangeDetector
-from reconciler.export import S3Exporter
-
 
 # ── Fixtures ────────────────────────────────────────────────────────
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -62,6 +62,7 @@ def _make_record(
 
 
 # ── DepartureRecord Tests ──────────────────────────────────────────
+
 
 class TestDepartureRecord:
     """Test the core DepartureRecord data model."""
@@ -180,6 +181,7 @@ class TestDepartureRecord:
 
 # ── ChangeDetector Tests ────────────────────────────────────────────
 
+
 class TestChangeDetector:
     """Test change detection via content hashing."""
 
@@ -208,9 +210,7 @@ class TestChangeDetector:
         expected_hash = detector.compute_hash(records)
 
         # Mock S3 returning the same hash
-        s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=expected_hash.encode()))
-        }
+        s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=expected_hash.encode()))}
 
         changed, _ = detector.has_changed(records)
         assert changed is False
@@ -218,9 +218,7 @@ class TestChangeDetector:
     def test_different_data_changed(self):
         """Different data → different hash → changed."""
         s3 = MagicMock()
-        s3.get_object.return_value = {
-            "Body": MagicMock(read=MagicMock(return_value=b"old_hash_value_here"))
-        }
+        s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"old_hash_value_here"))}
 
         detector = ChangeDetector(s3, "my-bucket")
         records = [_make_record()]
@@ -252,6 +250,7 @@ class TestChangeDetector:
 
 
 # ── S3Exporter Tests ────────────────────────────────────────────────
+
 
 class TestS3Exporter:
     """Test S3 manifest export."""
@@ -300,6 +299,7 @@ class TestS3Exporter:
 
 # ── Source Factory Tests ────────────────────────────────────────────
 
+
 class TestSourceFactory:
     """Test the get_source factory."""
 
@@ -307,26 +307,35 @@ class TestSourceFactory:
         with pytest.raises(ValueError, match="Unknown HR source"):
             get_source("oracle")
 
-    @patch.dict(os.environ, {
-        "SNOWFLAKE_ACCOUNT": "test",
-        "SNOWFLAKE_USER": "user",
-        "SNOWFLAKE_PASSWORD": "pass",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "SNOWFLAKE_ACCOUNT": "test",
+            "SNOWFLAKE_USER": "user",
+            "SNOWFLAKE_PASSWORD": "pass",
+        },
+    )
     def test_snowflake_source_creation(self):
         source = get_source("snowflake")
         assert source.__class__.__name__ == "SnowflakeSource"
 
-    @patch.dict(os.environ, {
-        "DATABRICKS_HOST": "test.cloud.databricks.com",
-        "DATABRICKS_TOKEN": "token",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "DATABRICKS_HOST": "test.cloud.databricks.com",
+            "DATABRICKS_TOKEN": "token",
+        },
+    )
     def test_databricks_source_creation(self):
         source = get_source("databricks")
         assert source.__class__.__name__ == "DatabricksSource"
 
-    @patch.dict(os.environ, {
-        "CLICKHOUSE_HOST": "test.clickhouse.cloud",
-    })
+    @patch.dict(
+        os.environ,
+        {
+            "CLICKHOUSE_HOST": "test.clickhouse.cloud",
+        },
+    )
     def test_clickhouse_source_creation(self):
         source = get_source("clickhouse")
         assert source.__class__.__name__ == "ClickHouseSource"

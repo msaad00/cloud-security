@@ -178,7 +178,9 @@ def _abort_queries(cursor, username: str, step: int) -> RemediationStep:
         return RemediationStep(step_number=step, action="abort_active_queries", target=username, detail="All active queries aborted")
     except Exception as e:
         logger.warning("Failed to abort queries for %s: %s", username, e)
-        return RemediationStep(step_number=step, action="abort_active_queries", target=username, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="abort_active_queries", target=username, status=RemediationStatus.FAILED, error=str(e)
+        )
 
 
 def _disable_user(cursor, username: str, step: int) -> RemediationStep:
@@ -211,7 +213,9 @@ def _revoke_roles(cursor, username: str, step: int) -> RemediationStep:
                 skipped += 1
 
         return RemediationStep(
-            step_number=step, action="revoke_roles", target=username,
+            step_number=step,
+            action="revoke_roles",
+            target=username,
             detail=f"Revoked {revoked} roles, skipped {skipped} (implicit/protected)",
         )
     except Exception as e:
@@ -246,20 +250,23 @@ def _transfer_ownership(cursor, username: str, target_role: str, step: int) -> R
                 for obj_type in _OWNERSHIP_OBJECT_TYPES:
                     try:
                         cursor.execute(
-                            f'GRANT OWNERSHIP ON ALL {obj_type} IN SCHEMA "{db}"."{schema}" '
-                            f'TO ROLE "{target_role}" COPY CURRENT GRANTS'
+                            f'GRANT OWNERSHIP ON ALL {obj_type} IN SCHEMA "{db}"."{schema}" TO ROLE "{target_role}" COPY CURRENT GRANTS'
                         )
                         transferred += 1
                     except Exception:
                         errors += 1
 
         return RemediationStep(
-            step_number=step, action="transfer_ownership", target=username,
+            step_number=step,
+            action="transfer_ownership",
+            target=username,
             detail=f"Transferred ownership in {transferred} schema/type combos, {errors} errors",
         )
     except Exception as e:
         logger.warning("Failed to transfer ownership for %s: %s", username, e)
-        return RemediationStep(step_number=step, action="transfer_ownership", target=username, status=RemediationStatus.FAILED, error=str(e))
+        return RemediationStep(
+            step_number=step, action="transfer_ownership", target=username, status=RemediationStatus.FAILED, error=str(e)
+        )
 
 
 def _drop_user(cursor, username: str, step: int) -> RemediationStep:
@@ -279,8 +286,11 @@ def _verify_dropped(cursor, username: str, step: int) -> RemediationStep:
         rows = cursor.fetchall()
         if rows:
             return RemediationStep(
-                step_number=step, action="verify_dropped", target=username,
-                status=RemediationStatus.FAILED, error="User still exists after DROP",
+                step_number=step,
+                action="verify_dropped",
+                target=username,
+                status=RemediationStatus.FAILED,
+                error="User still exists after DROP",
             )
         return RemediationStep(step_number=step, action="verify_dropped", target=username, detail="Confirmed: user no longer exists")
     except Exception as e:

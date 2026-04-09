@@ -107,9 +107,7 @@ def patch_dependency(finding: dict[str, Any], mode: str = "pr") -> PatchResult:
     return _create_pr(vuln_id, pkg, fixed, ecosystem, cmd)
 
 
-def _apply_direct(
-    vuln_id: str, pkg: str, version: str, cmd: str
-) -> PatchResult:
+def _apply_direct(vuln_id: str, pkg: str, version: str, cmd: str) -> PatchResult:
     """Apply fix directly to the working tree (P0 only)."""
     try:
         result = subprocess.run(
@@ -144,9 +142,7 @@ def _apply_direct(
         )
 
 
-def _create_pr(
-    vuln_id: str, pkg: str, version: str, ecosystem: str, cmd: str
-) -> PatchResult:
+def _create_pr(vuln_id: str, pkg: str, version: str, ecosystem: str, cmd: str) -> PatchResult:
     """Create a PR with the dependency upgrade."""
     branch = f"security/{vuln_id}-{pkg}-{version}".replace(":", "-").lower()
     title = f"fix({ecosystem}): upgrade {pkg} to {version} [{vuln_id}]"
@@ -203,9 +199,7 @@ def _create_pr(
 # ---------------------------------------------------------------------------
 
 
-def rotate_credential(
-    credential_type: str, credential_id: str, server_name: str
-) -> PatchResult:
+def rotate_credential(credential_type: str, credential_id: str, server_name: str) -> PatchResult:
     """Rotate an exposed credential via Secrets Manager.
 
     Deactivates old credential (does NOT delete) for rollback window.
@@ -216,9 +210,7 @@ def rotate_credential(
         if credential_type == "aws_access_key":
             return _rotate_aws_key(vuln_id, credential_id, server_name)
         # All other types: use Secrets Manager rotation
-        return _rotate_via_secrets_manager(
-            vuln_id, credential_type, credential_id, server_name
-        )
+        return _rotate_via_secrets_manager(vuln_id, credential_type, credential_id, server_name)
     except Exception as e:
         return PatchResult(
             vuln_id=vuln_id,
@@ -229,9 +221,7 @@ def rotate_credential(
         )
 
 
-def _rotate_aws_key(
-    vuln_id: str, access_key_id: str, server_name: str
-) -> PatchResult:
+def _rotate_aws_key(vuln_id: str, access_key_id: str, server_name: str) -> PatchResult:
     """Rotate an AWS access key: create new → deactivate old."""
     iam = boto3.client("iam")
 
@@ -253,9 +243,7 @@ def _rotate_aws_key(
     new_key_id = new_key["AccessKey"]["AccessKeyId"]
 
     # Deactivate old key (NOT delete — rollback window)
-    iam.update_access_key(
-        UserName=username, AccessKeyId=access_key_id, Status="Inactive"
-    )
+    iam.update_access_key(UserName=username, AccessKeyId=access_key_id, Status="Inactive")
 
     # Store new key in Secrets Manager for retrieval
     sm = boto3.client("secretsmanager")
@@ -301,9 +289,7 @@ def _rotate_aws_key(
     )
 
 
-def _rotate_via_secrets_manager(
-    vuln_id: str, cred_type: str, cred_id: str, server_name: str
-) -> PatchResult:
+def _rotate_via_secrets_manager(vuln_id: str, cred_type: str, cred_id: str, server_name: str) -> PatchResult:
     """Trigger Secrets Manager rotation for non-AWS credentials."""
     sm = boto3.client("secretsmanager")
     secret_name = f"vuln-remediation/{server_name}/{cred_type}"
@@ -332,9 +318,7 @@ def _rotate_via_secrets_manager(
 # ---------------------------------------------------------------------------
 
 
-def quarantine_server(
-    server_name: str, vuln_id: str, reason: str
-) -> PatchResult:
+def quarantine_server(server_name: str, vuln_id: str, reason: str) -> PatchResult:
     """Quarantine an MCP server by tagging its config and logging the action.
 
     Quarantine is reversible — when a fix becomes available, the pipeline
@@ -494,9 +478,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
     # Handle credential findings if present
     for cred in event.get("credentials", []):
-        result = rotate_credential(
-            cred["type"], cred["id"], cred["server_name"]
-        )
+        result = rotate_credential(cred["type"], cred["id"], cred["server_name"])
         results.append(result.to_dict())
         _log_result(result, timestamp)
 
