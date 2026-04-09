@@ -23,52 +23,20 @@ Production-grade cloud security benchmarks and automation — CIS checks for AWS
 ## Architecture — IAM Departures Remediation
 
 ```mermaid
-flowchart TD
-    subgraph HR["HR Data Sources"]
-        WD["Workday API"]
-        SF["Snowflake SQL"]
-        DB["Databricks Unity"]
-        CH["ClickHouse SQL"]
-    end
+flowchart LR
+    HR["HR Sources\nWorkday · Snowflake\nDatabricks · ClickHouse"]
+    REC["Reconciler\nSHA-256 diff"]
+    SFN["Step Function\nParser → Worker"]
+    TGT["IAM Cleanup\n13 steps · 5 clouds"]
+    AUDIT["Audit\nDDB + S3"]
 
-    subgraph SEC["AWS Security OU Account"]
-        REC["Reconciler\nSHA-256 change detect"]
-        S3["S3 Manifest\nKMS encrypted"]
-        EB["EventBridge\nS3 PutObject trigger"]
-
-        subgraph SFN["Step Function Pipeline"]
-            L1["Parser Lambda\nvalidate · grace period · rehire filter"]
-            L2["Worker Lambda\n13-step IAM cleanup"]
-        end
-
-        AUDIT["Audit Trail\nDynamoDB + S3"]
-    end
-
-    subgraph TGT["Target Accounts · STS AssumeRole"]
-        T1["Revoke credentials"]
-        T2["Strip permissions"]
-        T3["Delete IAM user"]
-    end
-
-    subgraph CROSS["Cross-Cloud Workers"]
-        AZ["Azure Entra\n6 steps"]
-        GCP["GCP IAM\n4+2 steps"]
-        SNF["Snowflake\n6 steps"]
-        DBX["Databricks SCIM\n4 steps"]
-    end
-
-    WD & SF & DB & CH --> REC
-    REC -->|change detected| S3
-    S3 --> EB --> L1 --> L2
-    L2 --> T1 --> T2 --> T3
-    L2 --> AZ & GCP & SNF & DBX
-    L2 --> AUDIT
+    HR --> REC --> SFN --> TGT --> AUDIT
 
     style HR fill:#1e293b,stroke:#475569,color:#e2e8f0
-    style SEC fill:#0f172a,stroke:#334155,color:#e2e8f0
+    style REC fill:#164e63,stroke:#22d3ee,color:#e2e8f0
     style SFN fill:#164e63,stroke:#22d3ee,color:#e2e8f0
     style TGT fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
-    style CROSS fill:#1a2e35,stroke:#2dd4bf,color:#e2e8f0
+    style AUDIT fill:#1e1b4b,stroke:#a78bfa,color:#e2e8f0
 ```
 
 ## Architecture — CSPM CIS Benchmarks
@@ -126,35 +94,18 @@ flowchart LR
 ## Architecture — Vulnerability Remediation Pipeline
 
 ```mermaid
-flowchart TD
-    SCAN["Scan Input\nSARIF / JSON"]
-    S3["S3 Findings\nKMS encrypted"]
-    EB["EventBridge"]
+flowchart LR
+    SCAN["Scan Findings\nSARIF / JSON"]
+    TRIAGE["Triage\nEPSS · KEV · CVSS\nP0→P3 SLAs"]
+    FIX["Remediate\nUpgrade · Rotate · Quarantine"]
+    AUDIT["Audit + Verify"]
 
-    subgraph SFN["Step Function"]
-        TRIAGE["Triage Lambda\nEPSS + KEV + CVSS"]
-        PATCH["Patcher Lambda"]
-    end
+    SCAN --> TRIAGE --> FIX --> AUDIT
 
-    P0["P0 · KEV / CVSS 9+\n1h SLA"]
-    P1["P1 · CVSS 7+ EPSS 0.7+\n4h SLA"]
-    P2["P2 · CVSS 4+ / EPSS 0.3+\n72h SLA"]
-
-    subgraph FIX["Remediation"]
-        DEP["Dependency Upgrade\n7 ecosystems"]
-        CRED["Credential Rotation"]
-        QUAR["MCP Quarantine"]
-    end
-
-    AUDIT["Audit + Notify"]
-    VERIFY["Re-scan"]
-
-    SCAN --> S3 --> EB --> TRIAGE
-    TRIAGE --> P0 & P1 & P2 --> PATCH
-    PATCH --> DEP & CRED & QUAR --> AUDIT --> VERIFY
-
-    style SFN fill:#164e63,stroke:#22d3ee,color:#e2e8f0
+    style SCAN fill:#1e293b,stroke:#475569,color:#e2e8f0
+    style TRIAGE fill:#164e63,stroke:#22d3ee,color:#e2e8f0
     style FIX fill:#1a2e35,stroke:#2dd4bf,color:#e2e8f0
+    style AUDIT fill:#1e1b4b,stroke:#a78bfa,color:#e2e8f0
 ```
 
 ## Security Model
