@@ -40,37 +40,15 @@ serving infrastructure. Each check mapped to MITRE ATLAS and NIST CSF 2.0.
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph INPUT["Serving Configuration"]
-        API["API Gateway Config"]
-        K8S["Kubernetes Manifests"]
-        DOCKER["Docker Compose"]
-        CLOUD["Cloud Serving Config<br/>SageMaker / Vertex AI / Azure ML"]
-    end
+flowchart LR
+    CONFIG["Serving Config<br/>API Gateway · K8s · Docker · Cloud ML"]
+    BENCH["checks.py — 16 checks<br/>Auth · Rate Limit · Egress<br/>Runtime · TLS · Safety"]
+    OUT["JSON / Console"]
 
-    subgraph CHECKS["checks.py — 16 checks, read-only"]
-        AUTH["Auth & RBAC<br/>3 checks"]
-        ABUSE["Rate Limiting<br/>2 checks"]
-        EGRESS["Data Egress<br/>3 checks"]
-        RUNTIME["Container Isolation<br/>3 checks"]
-        NET["TLS & Network<br/>2 checks"]
-        SAFETY["Safety Layers<br/>3 checks"]
-    end
+    CONFIG --> BENCH --> OUT
 
-    API --> AUTH
-    K8S --> RUNTIME
-    DOCKER --> RUNTIME
-    CLOUD --> SAFETY
-
-    AUTH --> RESULTS["JSON / Console / SARIF"]
-    ABUSE --> RESULTS
-    EGRESS --> RESULTS
-    RUNTIME --> RESULTS
-    NET --> RESULTS
-    SAFETY --> RESULTS
-
-    style INPUT fill:#1e293b,stroke:#475569,color:#e2e8f0
-    style CHECKS fill:#172554,stroke:#3b82f6,color:#e2e8f0
+    style CONFIG fill:#1e293b,stroke:#475569,color:#e2e8f0
+    style BENCH fill:#164e63,stroke:#22d3ee,color:#e2e8f0
 ```
 
 ## Controls — 6 Domains, 16 Checks

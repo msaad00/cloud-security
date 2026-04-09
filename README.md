@@ -16,6 +16,7 @@ Production-grade cloud security benchmarks and automation — CIS checks for AWS
 | [cspm-azure-cis-benchmark](skills/cspm-azure-cis-benchmark/) | Azure | 24 | CIS Azure Foundations v2.1 + AI Foundry security |
 | [model-serving-security](skills/model-serving-security/) | Any | 16 | Model endpoint auth, rate limiting, data egress, safety layers |
 | [gpu-cluster-security](skills/gpu-cluster-security/) | Any | 13 | GPU runtime isolation, driver CVEs, InfiniBand, tenant isolation |
+| [discover-environment](skills/discover-environment/) | Multi-cloud | — | Map cloud resources to security graph with MITRE ATT&CK/ATLAS overlays |
 | [iam-departures-remediation](skills/iam-departures-remediation/) | Multi-cloud | — | Auto-remediate IAM for departed employees across 5 clouds |
 | [vuln-remediation-pipeline](skills/vuln-remediation-pipeline/) | AWS | — | Auto-remediate supply chain vulns with EPSS triage |
 
@@ -98,57 +99,28 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph CONFIG["Serving Configuration"]
-        GW["API Gateway"]
-        K8S["K8s Manifests"]
-        CLD["Cloud Serving\nSageMaker · Vertex · Azure ML"]
-    end
+    CONFIG["Serving Config\nAPI Gateway · K8s · Cloud ML"]
+    BENCH["checks.py\n16 checks · 6 domains\nAuth · Rate Limit · Egress\nRuntime · TLS · Safety"]
+    OUT["JSON / Console"]
 
-    subgraph CHECKS["16 checks · 6 domains"]
-        AUTH["Auth & RBAC"]
-        RL["Rate Limiting"]
-        EGR["Data Egress"]
-        ISO["Container Isolation"]
-        TLS["TLS & Network"]
-        SAF["Safety Layers"]
-    end
-
-    GW & K8S & CLD --> AUTH & RL & EGR & ISO & TLS & SAF
-    AUTH & RL & EGR & ISO & TLS & SAF --> OUT["JSON / Console"]
+    CONFIG --> BENCH --> OUT
 
     style CONFIG fill:#1e293b,stroke:#475569,color:#e2e8f0
-    style CHECKS fill:#164e63,stroke:#22d3ee,color:#e2e8f0
+    style BENCH fill:#164e63,stroke:#22d3ee,color:#e2e8f0
 ```
 
 ## Architecture — GPU Cluster Security
 
 ```mermaid
 flowchart LR
-    subgraph CLUSTER["GPU Cluster Configuration"]
-        PODS["Pods & Containers"]
-        NODES["GPU Nodes\nDrivers · CUDA"]
-        IB["InfiniBand / RDMA"]
-        NS["Namespaces & Quotas"]
-    end
+    CLUSTER["Cluster Config\nPods · Nodes · InfiniBand\nNamespaces · Storage"]
+    BENCH["checks.py\n13 checks · 6 domains\nRuntime · Driver · Network\nStorage · Tenant · Observability"]
+    OUT["JSON / Console"]
 
-    subgraph CHECKS["13 checks · 6 domains"]
-        RT["Runtime Isolation"]
-        DRV["Driver & CUDA"]
-        NET["Network Segmentation"]
-        STO["Storage & SHM"]
-        TEN["Tenant Isolation"]
-        OBS["Observability"]
-    end
-
-    PODS --> RT
-    NODES --> DRV
-    IB --> NET
-    NS --> TEN & STO
-
-    RT & DRV & NET & STO & TEN & OBS --> OUT["JSON / Console"]
+    CLUSTER --> BENCH --> OUT
 
     style CLUSTER fill:#1e293b,stroke:#475569,color:#e2e8f0
-    style CHECKS fill:#164e63,stroke:#22d3ee,color:#e2e8f0
+    style BENCH fill:#164e63,stroke:#22d3ee,color:#e2e8f0
 ```
 
 ## Architecture — Vulnerability Remediation Pipeline

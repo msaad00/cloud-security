@@ -59,6 +59,18 @@ jobs:
       - working-directory: skills/gpu-cluster-security
         run: pytest tests/ -v -o "testpaths=tests"
 
+  test-discover-environment:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/discover-environment
+        run: pytest tests/ -v -o "testpaths=tests"
+
   agent-bom-scan:
     runs-on: ubuntu-latest
     needs: lint
