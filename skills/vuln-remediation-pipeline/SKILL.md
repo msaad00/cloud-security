@@ -2,11 +2,16 @@
 name: vuln-remediation-pipeline
 description: >-
   Auto-remediate vulnerabilities found in AI agent supply chains. Ingests scan
-  results from agent-bom (SARIF/JSON), triages by EPSS exploitability and CISA
-  KEV status, generates dependency upgrade PRs, rotates exposed credentials, and
-  quarantines compromised MCP servers. Use when the user mentions vulnerability
-  remediation, patch automation, credential rotation, MCP server quarantine, or
-  supply chain fix pipeline.
+  results from agent-bom (SARIF/JSON), triages by CVSS, EPSS exploitability, and
+  CISA KEV status into P0-P3 tiers with SLAs, then generates dependency upgrade
+  PRs, rotates exposed credentials, and quarantines compromised MCP servers. Every
+  finding is checked against a protected-package SSM list and a DynamoDB
+  already-remediated log before any action. Use when the user mentions
+  vulnerability remediation, patch automation, credential rotation, MCP server
+  quarantine, or supply chain fix pipeline. Do NOT use this skill to bypass the
+  protected-package list, auto-remediate findings without a fixed_version, or
+  skip the idempotency check against the audit table. Do NOT use for first-time
+  scanning (use agent-bom for scanning; this skill is the fix-side of the loop).
 license: Apache-2.0
 compatibility: >-
   Requires Python 3.11+, boto3, and GitHub CLI (gh). Lambdas deploy to AWS.

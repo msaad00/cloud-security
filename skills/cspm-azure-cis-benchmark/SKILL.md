@@ -2,9 +2,12 @@
 name: cspm-azure-cis-benchmark
 description: >-
   Assess Azure subscriptions against a curated subset of CIS Azure Foundations
-  Benchmark v2.1. Automates 6 high-impact checks across Storage and Networking.
-  Use when the user mentions Azure CIS benchmark, Azure storage security, or
-  unrestricted SSH/RDP detection in NSGs.
+  Benchmark v2.1. Automates 6 high-impact read-only checks across Storage and
+  Networking. Use when the user mentions Azure CIS benchmark, Azure storage
+  security, or unrestricted SSH/RDP detection in NSGs. Do NOT use for AWS or GCP;
+  do NOT use to remediate findings (assessment-only, Reader role only); do NOT
+  claim full CIS Azure coverage — only 6 controls are implemented, see the Roadmap
+  section in this file for the gap.
 license: Apache-2.0
 compatibility: >-
   Requires Python 3.11+, azure-identity, azure-mgmt-storage, azure-mgmt-network.
