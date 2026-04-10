@@ -5,19 +5,54 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Scanned by agent-bom](https://img.shields.io/badge/scanned_by-agent--bom-164e63)](https://github.com/msaad00/agent-bom)
 
-Production-grade cloud security benchmarks and automation — 5 skills, compliance-mapped to MITRE ATT&CK, NIST CSF, CIS, ISO 27001, and SOC 2. Each workflow is a closed loop: detect → act → audit → re-verify.
+Production-grade cloud and AI-infra security — organised into four functional categories, compliance-mapped to MITRE ATT&CK, NIST CSF, CIS, ISO 27001, and SOC 2. Every workflow is a closed loop: **detect → act → audit → re-verify**.
 
-Each skill is a standalone Python script with its own checks, tests, examples, and SKILL.md definition following [Anthropic's skill spec](https://docs.anthropic.com). Skills can be used directly from the CLI, integrated into CI/CD pipelines, or referenced by AI agents that read SKILL.md files (Claude Desktop, Cortex Code, etc.).
+Each skill is a standalone Python script with its own checks, tests, examples, and `SKILL.md` definition following [Anthropic's skill spec](https://platform.claude.com/docs/en/build-with-claude/skills-guide). Skills can be used directly from the CLI, integrated into CI/CD pipelines, or referenced by AI agents that read `SKILL.md` files (Claude Desktop, Cortex Code, Cursor, Codex, Windsurf, etc.).
 
-## Skills
+## Skills taxonomy
+
+```
+skills/
+├── compliance-cis-mitre/          "Is this config/posture aligned with a published benchmark?"
+├── remediation/                   "Something is wrong — fix it, gated and audited"
+├── detection-engineering/         "What does an attack look like on this surface?"
+└── ai-infra-security/             "AI-native surfaces: models, agents, GPU, topology"
+```
+
+See [`skills/README.md`](skills/README.md) for the full category index. The categories are functional, not organisational — a single incident (e.g. a leaked MCP credential) may touch a detection rule, a remediation pipeline, *and* a CIS control. Category = *what kind of work does this skill do*, not *which cloud*.
+
+### compliance-cis-mitre/
 
 | Skill | Scope | Checks | Description |
 |-------|-------|--------|-------------|
-| [cspm-aws-cis-benchmark](skills/cspm-aws-cis-benchmark/) | AWS | 18 | CIS AWS Foundations v3.0 — IAM, Storage, Logging, Networking |
-| [cspm-gcp-cis-benchmark](skills/cspm-gcp-cis-benchmark/) | GCP | 7 | CIS GCP Foundations v3.0 — IAM, Cloud Storage, Networking |
-| [cspm-azure-cis-benchmark](skills/cspm-azure-cis-benchmark/) | Azure | 6 | CIS Azure Foundations v2.1 — Storage, Networking |
-| [iam-departures-remediation](skills/iam-departures-remediation/) | Multi-cloud | — | Auto-remediate IAM for departed employees across 5 clouds |
-| [vuln-remediation-pipeline](skills/vuln-remediation-pipeline/) | AWS | — | Auto-remediate supply chain vulns with EPSS triage |
+| [cspm-aws-cis-benchmark](skills/compliance-cis-mitre/cspm-aws-cis-benchmark/) | AWS | 18 | CIS AWS Foundations v3.0 — IAM, Storage, Logging, Networking |
+| [cspm-gcp-cis-benchmark](skills/compliance-cis-mitre/cspm-gcp-cis-benchmark/) | GCP | 7 | CIS GCP Foundations v3.0 — IAM, Cloud Storage, Networking |
+| [cspm-azure-cis-benchmark](skills/compliance-cis-mitre/cspm-azure-cis-benchmark/) | Azure | 6 | CIS Azure Foundations v2.1 — Storage, Networking |
+| [k8s-security-benchmark](skills/compliance-cis-mitre/k8s-security-benchmark/) | K8s | 10 | CIS Kubernetes — Pod security, RBAC, network policy |
+| [container-security](skills/compliance-cis-mitre/container-security/) | Any | 8 | CIS Docker — Dockerfile best practices + runtime isolation |
+
+### remediation/
+
+| Skill | Scope | Description |
+|-------|-------|-------------|
+| [iam-departures-remediation](skills/remediation/iam-departures-remediation/) | Multi-cloud | Event-driven IAM cleanup for departed employees (HITL grace period, deny list, DLQ + SNS alerts) |
+| [vuln-remediation-pipeline](skills/remediation/vuln-remediation-pipeline/) | AWS | Auto-remediate supply-chain vulns with EPSS/KEV triage (protected-package gate, idempotency) |
+
+### detection-engineering/ 🆕
+
+A new category for detection rules, threat hunts, and runtime monitors specific to AI infrastructure — MCP servers, agent topologies, model endpoints, vector stores, prompt caches. See [`skills/detection-engineering/README.md`](skills/detection-engineering/README.md) for the category contract and the seed roadmap.
+
+| Skill | Surface | Description |
+|-------|---------|-------------|
+| [mcp-tool-drift-detection](skills/detection-engineering/mcp-tool-drift-detection/) | MCP proxy logs | Detects when a tool's `name`, `description`, `inputSchema`, or `annotations` change between calls in the same session — the MCP tool-poisoning TTP |
+
+### ai-infra-security/
+
+| Skill | Scope | Checks | Description |
+|-------|-------|--------|-------------|
+| [model-serving-security](skills/ai-infra-security/model-serving-security/) | Any | 16 | Model endpoint auth, rate limiting, egress, safety layers |
+| [gpu-cluster-security](skills/ai-infra-security/gpu-cluster-security/) | Any | 13 | GPU runtime isolation, driver CVEs, InfiniBand, tenant isolation |
+| [discover-environment](skills/ai-infra-security/discover-environment/) | Multi-cloud | — | Map cloud resources to a security graph with MITRE ATT&CK/ATLAS overlays |
 
 ## Architecture — IAM Departures Remediation
 
@@ -178,25 +213,27 @@ The "Scanned by agent-bom" badge above is backed by that last row — every push
 git clone https://github.com/msaad00/cloud-security.git
 cd cloud-security
 
-# CSPM CIS benchmarks (read-only)
+# compliance-cis-mitre — CSPM CIS benchmarks (read-only)
 pip install boto3 google-cloud-resource-manager azure-identity
-python skills/cspm-aws-cis-benchmark/src/checks.py   --region us-east-1
-python skills/cspm-gcp-cis-benchmark/src/checks.py   --project my-project
-python skills/cspm-azure-cis-benchmark/src/checks.py --subscription <sub-id>
+python skills/compliance-cis-mitre/cspm-aws-cis-benchmark/src/checks.py   --region us-east-1
+python skills/compliance-cis-mitre/cspm-gcp-cis-benchmark/src/checks.py   --project my-project
+python skills/compliance-cis-mitre/cspm-azure-cis-benchmark/src/checks.py --subscription <sub-id>
 
-# IAM departures remediation — dry-run mode (no IAM mutations)
-python skills/iam-departures-remediation/src/lambda_parser/handler.py --dry-run examples/manifest.json
+# remediation — dry-run mode (no mutations)
+python skills/remediation/iam-departures-remediation/src/lambda_parser/handler.py --dry-run examples/manifest.json
+python skills/remediation/vuln-remediation-pipeline/src/lambda_triage/handler.py < scan-findings.sarif
 
-# Vulnerability remediation pipeline — local triage
-python skills/vuln-remediation-pipeline/src/lambda_triage/handler.py < scan-findings.sarif
+# detection-engineering — MCP tool drift detection on proxy logs
+python skills/detection-engineering/mcp-tool-drift-detection/src/detect.py mcp-proxy.jsonl
 
-# Run tests
+# Run all real-skill tests
 pip install pytest boto3 moto
-pytest skills/cspm-aws-cis-benchmark/tests/      -v -o "testpaths=tests"
-pytest skills/cspm-gcp-cis-benchmark/tests/      -v -o "testpaths=tests"
-pytest skills/cspm-azure-cis-benchmark/tests/    -v -o "testpaths=tests"
-pytest skills/iam-departures-remediation/tests/  -v -o "testpaths=tests"
-pytest skills/vuln-remediation-pipeline/tests/   -v -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-aws-cis-benchmark/tests/     -v -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-gcp-cis-benchmark/tests/     -v -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-azure-cis-benchmark/tests/   -v -o "testpaths=tests"
+pytest skills/remediation/iam-departures-remediation/tests/          -v -o "testpaths=tests"
+pytest skills/remediation/vuln-remediation-pipeline/tests/           -v -o "testpaths=tests"
+pytest skills/detection-engineering/mcp-tool-drift-detection/tests/  -v -o "testpaths=tests"
 ```
 
 ## Contributing
