@@ -2,9 +2,12 @@
 name: cspm-gcp-cis-benchmark
 description: >-
   Assess GCP projects against a curated subset of CIS GCP Foundations Benchmark v3.0
-  controls. Automates 7 high-impact checks across IAM, Cloud Storage, and VPC
-  networking. Use when the user mentions GCP CIS benchmark, GCP security posture,
-  service account key audit, or public bucket detection.
+  controls. Automates 7 high-impact read-only checks across IAM, Cloud Storage, and
+  VPC networking. Use when the user mentions GCP CIS benchmark, GCP security posture,
+  service account key audit, or public bucket detection. Do NOT use for AWS or Azure;
+  do NOT use to remediate findings (assessment-only, zero write permissions); do NOT
+  claim full CIS GCP coverage — only 7 controls are implemented, see the Roadmap
+  section in this file for the gap.
 license: Apache-2.0
 compatibility: >-
   Requires Python 3.11+, google-cloud-iam, google-cloud-storage, google-cloud-compute.

@@ -2,10 +2,12 @@
 name: cspm-aws-cis-benchmark
 description: >-
   Assess AWS accounts against CIS AWS Foundations Benchmark v3.0. Runs 18 automated
-  checks across IAM, Storage, Logging, and Networking. Produces per-control pass/fail
-  results with remediation commands. Use when the user mentions AWS CIS benchmark,
-  cloud security posture, IAM hygiene audit, S3 public access check, or CloudTrail
-  validation.
+  read-only checks across IAM, Storage, Logging, and Networking. Produces per-control
+  pass/fail results with remediation commands. Use when the user mentions AWS CIS
+  benchmark, cloud security posture, IAM hygiene audit, S3 public access check, or
+  CloudTrail validation. Do NOT use for GCP, Azure, or on-prem; do NOT use this skill
+  to remediate findings (it is assessment-only and has zero write permissions) — pair
+  with iam-departures-remediation or vuln-remediation-pipeline for fixes.
 license: Apache-2.0
 compatibility: >-
   Requires Python 3.11+, boto3, and AWS credentials with SecurityAudit managed policy
