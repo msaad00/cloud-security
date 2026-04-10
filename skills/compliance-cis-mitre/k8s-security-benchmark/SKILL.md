@@ -13,7 +13,7 @@ compatibility: >-
 metadata:
   author: msaad00
   homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/k8s-security-benchmark
+  source: https://github.com/msaad00/cloud-security/tree/main/skills/compliance-cis-mitre/k8s-security-benchmark
   version: 0.1.0
   frameworks:
     - CIS Kubernetes Benchmark

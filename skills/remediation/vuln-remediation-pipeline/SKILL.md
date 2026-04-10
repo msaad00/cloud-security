@@ -21,7 +21,7 @@ compatibility: >-
 metadata:
   author: msaad00
   homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/vuln-remediation-pipeline
+  source: https://github.com/msaad00/cloud-security/tree/main/skills/remediation/vuln-remediation-pipeline
   version: 0.1.0
   frameworks:
     - MITRE ATT&CK

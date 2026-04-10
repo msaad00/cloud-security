@@ -7,15 +7,26 @@
 
 ## Repository at a glance
 
-5 closed-loop cloud security skills:
+Skills are organised into four functional categories. See [`skills/README.md`](skills/README.md) for the full catalog.
 
-| Skill | Mode | What it does |
-|-------|------|--------------|
-| `cspm-aws-cis-benchmark` | read-only | 18 CIS AWS Foundations v3.0 checks |
-| `cspm-gcp-cis-benchmark` | read-only | 7 CIS GCP Foundations v3.0 checks |
-| `cspm-azure-cis-benchmark` | read-only | 6 CIS Azure Foundations v2.1 checks |
-| `iam-departures-remediation` | event-driven, audited | Multi-cloud IAM cleanup for departed employees |
-| `vuln-remediation-pipeline` | gated by SLA + protected list | Auto-remediate supply chain vulns |
+**`compliance-cis-mitre/`** (read-only posture checks)
+- `cspm-aws-cis-benchmark` — 18 CIS AWS Foundations v3.0 checks
+- `cspm-gcp-cis-benchmark` — 7 CIS GCP Foundations v3.0 checks
+- `cspm-azure-cis-benchmark` — 6 CIS Azure Foundations v2.1 checks
+- `k8s-security-benchmark` — 10 CIS Kubernetes checks
+- `container-security` — 8 CIS Docker checks
+
+**`remediation/`** (active fix workflows, HITL-gated, dual-audited)
+- `iam-departures-remediation` — event-driven multi-cloud IAM cleanup
+- `vuln-remediation-pipeline` — EPSS/KEV triage + auto-PR
+
+**`detection-engineering/`** 🆕 (OCSF 1.3 wire format, MITRE ATT&CK inside the finding)
+- `ingest-mcp-proxy-ocsf` — raw MCP proxy JSONL → OCSF Application Activity (6002)
+- `detect-mcp-tool-drift` — OCSF → OCSF Security Finding (2001) + MITRE T1195.001
+- Compose via stdin/stdout pipes. See [`skills/detection-engineering/OCSF_CONTRACT.md`](skills/detection-engineering/OCSF_CONTRACT.md).
+
+**`ai-infra-security/`** (model serving, GPU clusters, environment discovery)
+- `model-serving-security`, `gpu-cluster-security`, `discover-environment`
 
 ## Hard rules for agents
 

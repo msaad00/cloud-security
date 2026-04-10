@@ -15,7 +15,7 @@ compatibility: >-
 metadata:
   author: msaad00
   homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/cspm-azure-cis-benchmark
+  source: https://github.com/msaad00/cloud-security/tree/main/skills/compliance-cis-mitre/cspm-azure-cis-benchmark
   version: 0.1.0
   frameworks:
     - CIS Azure Foundations v2.1 (subset)

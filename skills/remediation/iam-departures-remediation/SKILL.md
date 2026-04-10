@@ -22,7 +22,7 @@ compatibility: >-
 metadata:
   author: msaad00
   homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/iam-departures-remediation
+  source: https://github.com/msaad00/cloud-security/tree/main/skills/remediation/iam-departures-remediation
   version: 0.2.0
   frameworks:
     - MITRE ATT&CK

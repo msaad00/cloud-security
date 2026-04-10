@@ -22,7 +22,9 @@ jobs:
       - run: ruff check skills/ --config pyproject.toml
       - run: ruff format --check skills/
 
-  test-iam-departures:
+  # ── compliance-cis-mitre/ ────────────────────────────────────────
+
+  test-cspm-aws:
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -31,23 +33,10 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install boto3 moto pytest
-      - name: Run stable tests (parser + worker)
-        working-directory: skills/iam-departures-remediation
-        run: pytest tests/test_parser_lambda.py tests/test_worker_lambda.py -v -o "testpaths=tests"
-
-  test-model-serving:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: pip install pytest
-      - working-directory: skills/model-serving-security
+      - working-directory: skills/compliance-cis-mitre/cspm-aws-cis-benchmark
         run: pytest tests/ -v -o "testpaths=tests"
 
-  test-gpu-cluster:
+  test-cspm-gcp:
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -56,10 +45,10 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest
-      - working-directory: skills/gpu-cluster-security
+      - working-directory: skills/compliance-cis-mitre/cspm-gcp-cis-benchmark
         run: pytest tests/ -v -o "testpaths=tests"
 
-  test-discover-environment:
+  test-cspm-azure:
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -68,7 +57,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest
-      - working-directory: skills/discover-environment
+      - working-directory: skills/compliance-cis-mitre/cspm-azure-cis-benchmark
         run: pytest tests/ -v -o "testpaths=tests"
 
   test-k8s-security:
@@ -80,7 +69,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest
-      - working-directory: skills/k8s-security-benchmark
+      - working-directory: skills/compliance-cis-mitre/k8s-security-benchmark
         run: pytest tests/ -v -o "testpaths=tests"
 
   test-container-security:
@@ -92,8 +81,101 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pytest
-      - working-directory: skills/container-security
+      - working-directory: skills/compliance-cis-mitre/container-security
         run: pytest tests/ -v -o "testpaths=tests"
+
+  # ── remediation/ ─────────────────────────────────────────────────
+
+  test-iam-departures:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install boto3 moto pytest
+      - working-directory: skills/remediation/iam-departures-remediation
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  test-vuln-remediation:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install boto3 moto pytest
+      - working-directory: skills/remediation/vuln-remediation-pipeline
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  # ── detection-engineering/ ───────────────────────────────────────
+
+  test-detection-engineering:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - name: Run all detection-engineering skill tests
+        run: |
+          shopt -s nullglob
+          ran=0
+          for d in skills/detection-engineering/*/tests; do
+            # skip the .templates/ directory by filtering on a non-dotfile parent
+            parent=$(basename "$(dirname "$d")")
+            [[ "$parent" == .* ]] && continue
+            echo "=== $d ==="
+            (cd "$(dirname "$d")" && pytest tests/ -v -o "testpaths=tests")
+            ran=$((ran+1))
+          done
+          if [ "$ran" -eq 0 ]; then
+            echo "No detection-engineering skills with tests yet (template-only)"
+          fi
+
+  # ── ai-infra-security/ ───────────────────────────────────────────
+
+  test-model-serving:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/ai-infra-security/model-serving-security
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  test-gpu-cluster:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/ai-infra-security/gpu-cluster-security
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  test-discover-environment:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - working-directory: skills/ai-infra-security/discover-environment
+        run: pytest tests/ -v -o "testpaths=tests"
+
+  # ── agent-bom scans ──────────────────────────────────────────────
 
   agent-bom:
     runs-on: ubuntu-latest
@@ -114,16 +196,16 @@ jobs:
       - name: Scan IaC (CloudFormation + Terraform)
         run: |
           agent-bom iac \
-            skills/iam-departures-remediation/infra/cloudformation.yaml \
-            skills/iam-departures-remediation/infra/cross_account_stackset.yaml \
-            skills/iam-departures-remediation/infra/terraform/main.tf \
+            skills/remediation/iam-departures-remediation/infra/cloudformation.yaml \
+            skills/remediation/iam-departures-remediation/infra/cross_account_stackset.yaml \
+            skills/remediation/iam-departures-remediation/infra/terraform/main.tf \
             -f json -o iac-scan.json || true
       - name: Scan IaC (SARIF for code scanning)
         run: |
           agent-bom iac \
-            skills/iam-departures-remediation/infra/cloudformation.yaml \
-            skills/iam-departures-remediation/infra/cross_account_stackset.yaml \
-            skills/iam-departures-remediation/infra/terraform/main.tf \
+            skills/remediation/iam-departures-remediation/infra/cloudformation.yaml \
+            skills/remediation/iam-departures-remediation/infra/cross_account_stackset.yaml \
+            skills/remediation/iam-departures-remediation/infra/terraform/main.tf \
             -f sarif -o iac-scan.sarif || true
       - name: Normalise SARIF (handle agent-bom empty-result quirk)
         if: always()
@@ -182,6 +264,8 @@ jobs:
             iac-scan.sarif
           if-no-files-found: ignore
 
+  # ── IaC validation ───────────────────────────────────────────────
+
   validate-cloudformation:
     runs-on: ubuntu-latest
     needs: lint
@@ -191,8 +275,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install cfn-lint
-      - run: cfn-lint skills/iam-departures-remediation/infra/cloudformation.yaml
-      - run: cfn-lint skills/iam-departures-remediation/infra/cross_account_stackset.yaml
+      - run: cfn-lint skills/remediation/iam-departures-remediation/infra/cloudformation.yaml
+      - run: cfn-lint skills/remediation/iam-departures-remediation/infra/cross_account_stackset.yaml
 
   validate-terraform:
     runs-on: ubuntu-latest
@@ -202,7 +286,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.12.0"
-      - run: cd skills/iam-departures-remediation/infra/terraform && terraform init -backend=false && terraform validate
+      - run: cd skills/remediation/iam-departures-remediation/infra/terraform && terraform init -backend=false && terraform validate
 
   security-scan:
     runs-on: ubuntu-latest
@@ -216,7 +300,7 @@ jobs:
       - run: bandit -r skills/ -c pyproject.toml --severity-level medium || true
       - name: Check for hardcoded secrets
         run: |
-          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/src/ --include="*.py" || exit 1
-          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/src/ --include="*.py" || exit 1
-          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/src/ --include="*.py" || exit 1
+          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ --include="*.py" || exit 1
+          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/*/src/ --include="*.py" || exit 1
+          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/*/src/ --include="*.py" || exit 1
           echo "No hardcoded secrets found in source code"

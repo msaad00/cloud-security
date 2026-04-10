@@ -1,0 +1,64 @@
+---
+name: detect-mcp-tool-drift
+description: >-
+  Detect MCP tool schema drift mid-session — the MCP tool-poisoning / rug-pull
+  attack pattern. Reads OCSF 1.3 Application Activity (class 6002) events produced
+  by ingest-mcp-proxy-ocsf, groups them by session, and flags any tool whose
+  fingerprint (sha256 over name + description + inputSchema + annotations) changes
+  between tools/list responses in the same session. Emits OCSF Security Finding
+  (class 2001) with MITRE ATT&CK T1195.001 (Compromise Software Supply Chain). Use
+  when the user mentions MCP security, tool drift, tool poisoning, prompt
+  injection via tool schema, or supply chain compromise of an MCP server. Do NOT
+  use on raw MCP proxy logs — feed them through ingest-mcp-proxy-ocsf first. Do
+  NOT use for cross-session drift (same tool, different sessions) — that is a
+  legitimate MCP server update, not an attack; a separate detector will cover it.
+  Do NOT use as a compliance check; this is an active detection skill.
+license: Apache-2.0
+---
+
+# detect-mcp-tool-drift
+
+## Attack pattern
+
+An MCP server can change the schema of a tool between calls in the same session. A benign-looking `query_db(sql)` tool with `readOnly: true` in the first `tools/list` response can come back in the second `tools/list` response (after the agent has already trusted the first definition) with a new `write` argument and `readOnly: false`. By the time the agent sees the updated schema, it may have already been primed by the original description and will happily call `query_db(sql="DELETE …", write=true)`.
+
+This is the **MCP tool-poisoning** / **rug-pull** pattern. It maps to MITRE ATT&CK **T1195.001** — Supply Chain Compromise: Compromise Software Supply Chain. The tool is the "software"; the MCP server is the "supply chain."
+
+## Detection logic
+
+Walk OCSF Application Activity events (emitted by `ingest-mcp-proxy-ocsf`) in timestamp order. For each session and tool name, track the last-seen fingerprint. If a later `tools/list` entry for the same `(session, tool name)` has a different fingerprint, emit **one** Security Finding per drift event.
+
+```
+state[(session_uid, tool_name)] = last_fingerprint
+```
+
+- Same fingerprint in the same session → no finding (idempotent republish of the same tool is normal).
+- Different fingerprint in the same session → finding.
+- Different fingerprint in a different session → ignored (cross-session is a separate detector).
+
+## Output contract
+
+One OCSF Security Finding (class `2001`) per drift event. Populates:
+
+- `attacks[]`: MITRE ATT&CK v14, tactic TA0001 (Initial Access), technique T1195.001 (Compromise Software Supply Chain).
+- `observables[]`: session uid, tool name, before/after fingerprints.
+- `evidence`: counts and pointers to the two `tools/list` events that triggered the finding.
+- `finding.uid`: deterministic (`det-mcp-drift-<session>-<tool>-<before-8>-<after-8>`) so re-running on the same fixture is idempotent.
+
+See [`../OCSF_CONTRACT.md`](../OCSF_CONTRACT.md) for the full Security Finding contract.
+
+## Usage
+
+```bash
+# Piped from the ingest skill
+python ../ingest-mcp-proxy-ocsf/src/ingest.py mcp-proxy.jsonl \
+  | python src/detect.py \
+  > drift-findings.ocsf.jsonl
+
+# Standalone file
+python src/detect.py ../golden/mcp_proxy_sample.ocsf.jsonl
+```
+
+## Tests
+
+Golden-fixture parity: runs against [`../golden/mcp_proxy_sample.ocsf.jsonl`](../golden/mcp_proxy_sample.ocsf.jsonl) and asserts the output matches [`../golden/tool_drift_finding.ocsf.json`](../golden/tool_drift_finding.ocsf.json) exactly (with volatile fields scrubbed).

@@ -5,16 +5,35 @@ This repository contains production-ready cloud security automations structured 
 
 ## Repository structure
 
+Skills are grouped into four **functional** categories — not by cloud. The category answers *what kind of work does this skill do*, not *which cloud does it run in*. See [`skills/README.md`](skills/README.md) for the full catalog.
+
 ```
 skills/
-  cspm-aws-cis-benchmark/       — CIS AWS Foundations v3.0 (18 checks, read-only)
-  cspm-gcp-cis-benchmark/       — CIS GCP Foundations v3.0 (7 checks, read-only)
-  cspm-azure-cis-benchmark/     — CIS Azure Foundations v2.1 (6 checks, read-only)
-  iam-departures-remediation/   — Multi-cloud IAM cleanup for departed employees (event-driven, audited)
-  vuln-remediation-pipeline/    — Auto-remediate supply chain vulnerabilities (EPSS/KEV/CVSS triage)
+├── compliance-cis-mitre/          # "Is this aligned with a published benchmark?" (read-only)
+│   ├── cspm-aws-cis-benchmark/    (18 CIS AWS v3.0 checks)
+│   ├── cspm-gcp-cis-benchmark/    (7 CIS GCP v3.0 checks)
+│   ├── cspm-azure-cis-benchmark/  (6 CIS Azure v2.1 checks)
+│   ├── k8s-security-benchmark/    (10 CIS Kubernetes checks)
+│   └── container-security/        (8 CIS Docker checks)
+│
+├── remediation/                   # "Something is wrong — fix it, gated and audited"
+│   ├── iam-departures-remediation/ (event-driven, DLQ + SNS, dual audit)
+│   └── vuln-remediation-pipeline/  (EPSS/KEV triage + auto-PR)
+│
+├── detection-engineering/         # "What does an attack look like on this surface?"
+│   ├── README.md + OCSF_CONTRACT.md  (category contract — OCSF 1.3 wire format)
+│   ├── golden/                        (frozen OCSF fixtures — contract tests)
+│   ├── analytics/                     (stub for ClickHouse + Grafana follow-up)
+│   ├── ingest-mcp-proxy-ocsf/         (raw MCP proxy → OCSF Application Activity 6002)
+│   └── detect-mcp-tool-drift/         (OCSF → OCSF Security Finding 2001 + MITRE T1195.001)
+│
+└── ai-infra-security/             # "AI-native surfaces: models, agents, GPU, topology"
+    ├── model-serving-security/    (16 checks)
+    ├── gpu-cluster-security/      (13 checks)
+    └── discover-environment/      (MITRE ATT&CK/ATLAS graph overlay)
 ```
 
-Five skills total. Each one is a closed loop: **detect → act → audit → re-verify**.
+Every skill in every category is a closed loop: **detect → act → audit → re-verify**.
 The CSPM skills are detection-only and re-verify the same `control_id` on the next run.
 The remediation skills (IAM departures, vuln pipeline) write back to a dual audit
 trail (DynamoDB + S3) and ingest results into the source warehouse so the next
@@ -141,23 +160,30 @@ SOC 2 TSC, ISO 27001:2022, PCI DSS 4.0, OWASP LLM Top 10, OWASP MCP Top 10.
 ## Running checks
 
 ```bash
-# CSPM (read-only)
+# compliance-cis-mitre/ (read-only)
 pip install boto3 google-cloud-resource-manager azure-identity
-python skills/cspm-aws-cis-benchmark/src/checks.py   --region us-east-1
-python skills/cspm-gcp-cis-benchmark/src/checks.py   --project my-project
-python skills/cspm-azure-cis-benchmark/src/checks.py --subscription <sub-id>
+python skills/compliance-cis-mitre/cspm-aws-cis-benchmark/src/checks.py   --region us-east-1
+python skills/compliance-cis-mitre/cspm-gcp-cis-benchmark/src/checks.py   --project my-project
+python skills/compliance-cis-mitre/cspm-azure-cis-benchmark/src/checks.py --subscription <sub-id>
 
-# Remediation (dry-run)
-python skills/iam-departures-remediation/src/lambda_parser/handler.py --dry-run examples/manifest.json
-python skills/vuln-remediation-pipeline/src/lambda_triage/handler.py < scan-findings.sarif
+# remediation/ (dry-run)
+python skills/remediation/iam-departures-remediation/src/lambda_parser/handler.py --dry-run examples/manifest.json
+python skills/remediation/vuln-remediation-pipeline/src/lambda_triage/handler.py < scan-findings.sarif
+
+# detection-engineering/ — end-to-end pipe
+python skills/detection-engineering/ingest-mcp-proxy-ocsf/src/ingest.py mcp-proxy.jsonl \
+  | python skills/detection-engineering/detect-mcp-tool-drift/src/detect.py \
+  > findings.ocsf.jsonl
 
 # Tests
 pip install pytest boto3 moto
-pytest skills/cspm-aws-cis-benchmark/tests/      -o "testpaths=tests"
-pytest skills/cspm-gcp-cis-benchmark/tests/      -o "testpaths=tests"
-pytest skills/cspm-azure-cis-benchmark/tests/    -o "testpaths=tests"
-pytest skills/iam-departures-remediation/tests/  -o "testpaths=tests"
-pytest skills/vuln-remediation-pipeline/tests/   -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-aws-cis-benchmark/tests/     -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-gcp-cis-benchmark/tests/     -o "testpaths=tests"
+pytest skills/compliance-cis-mitre/cspm-azure-cis-benchmark/tests/   -o "testpaths=tests"
+pytest skills/remediation/iam-departures-remediation/tests/          -o "testpaths=tests"
+pytest skills/remediation/vuln-remediation-pipeline/tests/           -o "testpaths=tests"
+pytest skills/detection-engineering/ingest-mcp-proxy-ocsf/tests/     -o "testpaths=tests"
+pytest skills/detection-engineering/detect-mcp-tool-drift/tests/     -o "testpaths=tests"
 ```
 
 ## Integration with agent-bom
