@@ -1,0 +1,7 @@
+version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status vpc-id subnet-id instance-id tcp-flags flow-direction region
+5 111122223333 eni-0a1b2c3d4e5f6g7h8 10.0.1.100 10.0.2.50 48123 22 6 12 1680 1775797200 1775797260 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 2 egress us-east-1
+5 111122223333 eni-0a1b2c3d4e5f6g7h8 10.0.1.100 10.0.2.50 48124 22 6 50 8200 1775797260 1775797320 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
+5 111122223333 eni-0a1b2c3d4e5f6g7h8 10.0.1.100 10.0.3.75 55412 3306 6 300 450000 1775797320 1775797380 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
+5 111122223333 eni-0a1b2c3d4e5f6g7h8 10.0.1.100 192.168.1.10 33456 8080 6 5 320 1775797380 1775797440 REJECT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 2 egress us-east-1
+5 111122223333 eni-0zzzzzzzzzzzzzzz - - - - - - - 1775797440 1775797500 - NODATA - - - - - us-east-1
+5 111122223333 eni-0a1b2c3d4e5f6g7h8 8.8.8.8 10.0.1.100 53 44123 17 2 240 1775797500 1775797560 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 - ingress us-east-1

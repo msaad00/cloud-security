@@ -1,0 +1,6 @@
+version account-id interface-id srcaddr dstaddr srcport dstport protocol packets bytes start end action log-status vpc-id subnet-id instance-id tcp-flags flow-direction region
+5 111122223333 eni-compromised 10.0.1.100 10.0.3.75 55412 3306 6 300 450000 1775797260 1775797320 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
+5 111122223333 eni-compromised 10.0.1.100 10.0.2.50 48123 22 6 50 8200 1775797320 1775797380 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
+5 111122223333 eni-compromised 10.0.1.100 10.0.2.99 33456 443 6 5 320 1775797380 1775797440 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 2 egress us-east-1
+5 111122223333 eni-compromised 10.0.1.100 104.18.32.7 44812 443 6 200 125000 1775797440 1775797500 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
+5 111122223333 eni-compromised 10.0.1.100 10.0.4.99 51234 5432 6 200 200000 1775798940 1775799000 ACCEPT OK vpc-0abcdef012345 subnet-priv-1a i-0web01 18 egress us-east-1
