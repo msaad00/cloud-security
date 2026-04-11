@@ -89,6 +89,7 @@ jobs:
       matrix:
         skill:
           - ingest-cloudtrail-ocsf
+          - ingest-vpc-flow-logs-ocsf
           - ingest-gcp-audit-ocsf
           - ingest-azure-activity-ocsf
           - ingest-k8s-audit-ocsf
@@ -96,6 +97,7 @@ jobs:
           - detect-mcp-tool-drift
           - detect-privilege-escalation-k8s
           - detect-sensitive-secret-read-k8s
+          - detect-lateral-movement-aws
           - convert-ocsf-to-sarif
           - convert-ocsf-to-mermaid-attack-flow
     name: test-detection-engineering (${{ matrix.skill }})
