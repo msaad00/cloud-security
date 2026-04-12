@@ -32,7 +32,7 @@ jobs:
           python-version: "3.11"
       - run: python scripts/validate_skill_contract.py
 
-  security-scan:
+  safe-skill-bar:
     runs-on: ubuntu-latest
     needs: [lint, skill-contract]
     steps:
@@ -40,19 +40,32 @@ jobs:
       - uses: ./.github/actions/setup-python-deps
         with:
           python-version: "3.11"
-          packages: bandit
-      - run: bandit -r skills/compliance-cis-mitre/cspm-aws-cis-benchmark skills/remediation/iam-departures-remediation mcp-server -c pyproject.toml --severity-level medium
+          packages: bandit pip-audit
+      - run: python scripts/validate_safe_skill_bar.py
       - name: Check for hardcoded secrets
         run: |
-          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ --include="*.py" || exit 1
-          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/*/src/ --include="*.py" || exit 1
-          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/*/src/ --include="*.py" || exit 1
-          echo "No hardcoded secrets found in source code"
+          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          echo "No hardcoded secrets found in enforced executable paths"
+      - name: Dependency vulnerability audit
+        run: pip-audit "${{ github.workspace }}"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [lint, skill-contract, safe-skill-bar]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python-deps
+        with:
+          python-version: "3.11"
+          packages: bandit
+      - run: bandit -r skills/compliance-cis-mitre/cspm-aws-cis-benchmark skills/remediation/iam-departures-remediation mcp-server -c pyproject.toml --severity-level medium
 
   # ── Unit tests, grouped into category matrices ────────────────
   test-compliance:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     strategy:
       fail-fast: false
       matrix:
@@ -74,7 +87,7 @@ jobs:
 
   test-remediation:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     strategy:
       fail-fast: false
       matrix:
@@ -92,7 +105,7 @@ jobs:
 
   test-detection-engineering:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     strategy:
       fail-fast: false
       matrix:
@@ -123,7 +136,7 @@ jobs:
 
   test-ai-infra-security:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     strategy:
       fail-fast: false
       matrix:
@@ -143,7 +156,7 @@ jobs:
 
   test-integration:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-python-deps
@@ -155,7 +168,7 @@ jobs:
   # ── IaC validation (CloudFormation + Terraform in one job) ─────
   validate-iac:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-python-deps
@@ -175,7 +188,7 @@ jobs:
   # ── agent-bom scans (code + skills + fs + IaC with SARIF upload) ─
   agent-bom:
     runs-on: ubuntu-latest
-    needs: [lint, skill-contract]
+    needs: [lint, skill-contract, safe-skill-bar]
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6

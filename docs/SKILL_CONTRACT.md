@@ -98,5 +98,8 @@ CI currently validates:
 - required files exist
 - `name` format is valid
 - `Use when` and `Do NOT use` are present
+- read-only skills do not use subprocess/shell execution
+- write-capable skills document and test dry-run behavior
+- wildcard IAM / RBAC policy entries carry an explicit `WILDCARD_OK` justification
 
 The contract will expand over time, but new CI rules should only be added when the current tree already satisfies them.

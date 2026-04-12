@@ -7,7 +7,9 @@ The CI pipeline is split into independent lanes so failures point at the right k
 - `lint`
   - fast repo-wide Ruff gate
 - `security-scan`
-  - scoped Bandit and hardcoded-secret checks for the currently enforced high-risk paths
+  - scoped Bandit for the currently enforced high-risk paths
+- `safe-skill-bar`
+  - policy lane for abuse resistance, write-path guardrails, wildcard IAM exceptions, secrets scan, and dependency audit against the repo's declared project dependencies
 - `test-compliance`
   - benchmark skills grouped under one matrix
 - `test-remediation`
@@ -34,6 +36,15 @@ The CI pipeline is split into independent lanes so failures point at the right k
 ## Next Tightenings
 
 1. Pin all third-party GitHub Actions to immutable SHAs.
-2. Add a dependency-vulnerability lane with an explicit scoped pass/fail policy.
-3. Move repeated skill-family package sets into dependency groups or lock-backed sync commands.
-4. Add a reusable workflow for test lanes if matrix shapes keep growing.
+2. Move repeated skill-family package sets into dependency groups or lock-backed sync commands.
+3. Add a reusable workflow for test lanes if matrix shapes keep growing.
+
+## Dependency Policy
+
+Dependency refreshes should land in grouped batches, not one-package PR spam:
+
+- `deps: github-actions`
+- `deps: python-dev-tools`
+- `deps: cloud-sdks`
+
+Use the dependency hygiene skill spec as the review contract for those batches.

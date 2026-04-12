@@ -14,7 +14,7 @@
       }
     },
     {
-      "Sid": "IAMRemediationActions",
+      "Sid": "IAMRemediationActions_WILDCARD_OK",
       "Effect": "Allow",
       "Action": [
         "iam:GetUser",
