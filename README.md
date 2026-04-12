@@ -94,21 +94,41 @@ This is a security tool. Trustworthiness is the first feature, not an afterthoug
 <details>
 <summary><b>How trust is verified</b></summary>
 
-- **Golden-fixture tests** — every detection skill is tested against frozen OCSF inputs so a refactor that loses coverage fails CI
-- **Wire-contract tests** — every ingest skill emits exactly the OCSF shape pinned in [`OCSF_CONTRACT.md`](skills/detection-engineering/OCSF_CONTRACT.md); cross-skill assertions verify every detect skill emits Detection Finding (2004) with MITRE ATT&CK v14
-- **End-to-end integration tests** — `tests/integration/` pipes raw logs through the full ingest → detect → convert chain and deep-equals the frozen SARIF + Mermaid goldens
-- **Static analysis** — `ruff check` + `ruff format --check` + `bandit` + hardcoded-secret grep on every PR
-- **Per-skill `REFERENCES.md`** — every skill lists the official docs, schemas, and IAM policies it depends on. No opaque dependencies, no fabricated APIs
-- **`agent-bom` scans** — `code` / `skills scan` / `fs` / `iac` run on every push; IaC findings land in the GitHub Security tab under `agent-bom-iac`
+| Check | What it catches | Where it runs |
+|---|---|---|
+| **Golden-fixture deep-eq** | Silent detection-coverage regressions after a refactor | Per-skill `pytest` — `tests/test_*.py::TestGoldenFixture` |
+| **Wire-contract tests** | Off-spec events, wrong `class_uid`, missing required fields, `attacks[]` at the wrong level | Cross-skill assertions pinned in [`OCSF_CONTRACT.md`](skills/detection-engineering/OCSF_CONTRACT.md) |
+| **End-to-end pipes** | Breakage across the `ingest → detect → convert` chain | `tests/integration/` — deep-eq against frozen SARIF + Mermaid |
+| **Static analysis** | Unsafe parsing, missing imports, style drift | `ruff check` + `ruff format --check` + `bandit` on every PR |
+| **Hardcoded-secret grep** | Leaked `AKIA…` / `sk-…` / `ghp_…` tokens before they ship | CI lint job, repo-wide on every push |
+| **`REFERENCES.md` per skill** | Fabricated APIs, opaque dependencies, undocumented IAM | Presence enforced by CI; manual review on new skills |
+| **`agent-bom` scans** | Vulnerable deps, IaC misconfig, shadow AI components | `code` / `skills scan` / `fs` / `iac` on every push; findings land in GitHub Security tab under `agent-bom-iac` |
 
 </details>
 
-See [`SECURITY.md`](SECURITY.md) for the disclosure policy, [`SECURITY_BAR.md`](SECURITY_BAR.md) for the per-principle verification matrix, and [`ARCHITECTURE.md`](ARCHITECTURE.md) for the layered architecture.
+## Related docs
+
+| Document | Purpose |
+|---|---|
+| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 9-layer design, two execution modes (stateless + persistent), 10 guardrails |
+| [`OCSF_CONTRACT.md`](skills/detection-engineering/OCSF_CONTRACT.md) | Wire format pinning for OCSF 1.8 + MITRE ATT&CK v14 |
+| [`SECURITY_BAR.md`](SECURITY_BAR.md) | Per-principle verification matrix — every skill graded against every principle |
+| [`SECURITY.md`](SECURITY.md) | Coordinated disclosure policy |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to add a new skill |
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). TL;DR — new skills copy the nearest sibling, add `SKILL.md` + `src/` + `tests/` + golden fixtures + `REFERENCES.md`, add a row to the `SECURITY_BAR.md` matrix, open a PR.
+New skills land as standalone bundles. The checklist:
+
+1. **Pick a layer** — ingest, enrich, detect, evaluate, remediate, or convert
+2. **Copy the nearest sibling** — the existing skills in the target category are the canonical reference layout
+3. **Ship the bundle** — `SKILL.md` with a `Do NOT use…` clause, `src/<entry>.py`, `tests/test_<entry>.py`, golden fixtures under `detection-engineering/golden/` (or equivalent), `REFERENCES.md` listing every official doc the skill depends on
+4. **Add a row** to the [`SECURITY_BAR.md`](SECURITY_BAR.md) matrix
+5. **Wire into CI** — add the skill to the right matrix cell in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+6. **Open a PR** — [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) is the review contract; make sure your skill satisfies every applicable guardrail
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full guide.
 
 ## License
 
-[Apache 2.0](LICENSE)
+[Apache 2.0](LICENSE) — use it, fork it, ship it. Security research is welcome; see [`SECURITY.md`](SECURITY.md) for coordinated disclosure.
