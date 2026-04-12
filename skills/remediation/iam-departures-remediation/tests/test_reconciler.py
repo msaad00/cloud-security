@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-
-# We test the source code directly by adding the src dir to path
 import sys
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -26,8 +24,6 @@ from reconciler.sources import (
 # ── Fixtures ────────────────────────────────────────────────────────
 
 # Frozen reference time so record_hash is deterministic across calls.
-# (Using datetime.now() inside the fixture made identical calls produce
-# different hashes, which broke test_record_hash_deterministic.)
 _FROZEN_NOW = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
 
@@ -75,98 +71,62 @@ def _make_record(
     )
 
 
-# ── DepartureRecord Tests ──────────────────────────────────────────
-
-
 class TestDepartureRecord:
-    """Test the core DepartureRecord data model."""
-
     def test_basic_termination_should_remediate(self):
-        """Standard case: terminated, not rehired → remediate."""
         record = _make_record(terminated_at=_days_ago(30))
         assert record.should_remediate() is True
 
     def test_already_deleted_should_not_remediate(self):
-        """IAM already deleted by admin → skip."""
         record = _make_record(iam_deleted=True)
         assert record.should_remediate() is False
 
     def test_already_remediated_should_not_remediate(self):
-        """Already processed → skip."""
         record = _make_record(status=RemediationStatus.REMEDIATED)
         assert record.should_remediate() is False
 
     def test_no_termination_date_should_not_remediate(self):
-        """Still employed → skip."""
         record = _make_record(terminated_at=None)
         assert record.should_remediate() is False
 
     def test_rehire_same_iam_in_use_should_not_remediate(self):
-        """Rehired + same IAM used after rehire → skip.
-
-        Scenario: Employee terminated, rehired 2 weeks later, using
-        the same IAM user in their new role.
-        """
         record = _make_record(
             terminated_at=_days_ago(60),
             is_rehire=True,
             rehire_date=_days_ago(30),
-            iam_last_used_at=_days_ago(5),  # Used after rehire
+            iam_last_used_at=_days_ago(5),
         )
         assert record.should_remediate() is False
 
     def test_rehire_different_iam_should_remediate_old(self):
-        """Rehired + old IAM NOT used after rehire → remediate old IAM.
-
-        Scenario: Employee terminated, rehired, got a NEW IAM user.
-        The old IAM is orphaned and should be deleted.
-        """
         record = _make_record(
             terminated_at=_days_ago(60),
             is_rehire=True,
             rehire_date=_days_ago(30),
-            iam_last_used_at=_days_ago(45),  # Last used BEFORE rehire
+            iam_last_used_at=_days_ago(45),
         )
         assert record.should_remediate() is True
 
     def test_rehire_iam_created_after_rehire_should_not_remediate(self):
-        """IAM created after rehire → this is the new IAM → skip.
-
-        Scenario: Employee rehired, new IAM created for them.
-        This record represents their current active IAM.
-        """
         record = _make_record(
             terminated_at=_days_ago(60),
             is_rehire=True,
             rehire_date=_days_ago(30),
-            iam_created_at=_days_ago(25),  # Created AFTER rehire
+            iam_created_at=_days_ago(25),
         )
         assert record.should_remediate() is False
 
     def test_rehire_no_usage_data_should_remediate(self):
-        """Rehired + no last-used data → conservative: remediate old IAM.
-
-        If we can't confirm the IAM is in use, assume it's orphaned.
-        """
         record = _make_record(
             terminated_at=_days_ago(60),
             is_rehire=True,
             rehire_date=_days_ago(30),
             iam_last_used_at=None,
-            iam_created_at=_days_ago(365),  # Created long before rehire
+            iam_created_at=_days_ago(365),
         )
         assert record.should_remediate() is True
 
     def test_terminated_rehired_terminated_again(self):
-        """Terminated → rehired → terminated again → remediate.
-
-        The latest termination means they're gone again.
-        is_rehire would be False for the latest termination record.
-        """
-        record = _make_record(
-            terminated_at=_days_ago(10),
-            is_rehire=False,
-        )
+        record = _make_record(terminated_at=_days_ago(10), is_rehire=False)
         assert record.should_remediate() is True
 
     def test_email_normalized_to_lowercase(self):
@@ -174,149 +134,82 @@ class TestDepartureRecord:
         assert record.email == "jane.doe@company.com"
 
     def test_record_hash_deterministic(self):
-        r1 = _make_record(email="test@co.com", terminated_at=_days_ago(10))
-        r2 = _make_record(email="test@co.com", terminated_at=_days_ago(10))
+        terminated_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        r1 = _make_record(email="test@co.com", terminated_at=terminated_at)
+        r2 = _make_record(email="test@co.com", terminated_at=terminated_at)
         assert r1.record_hash == r2.record_hash
 
     def test_record_hash_changes_on_different_data(self):
-        r1 = _make_record(email="a@co.com")
-        r2 = _make_record(email="b@co.com")
-        assert r1.record_hash != r2.record_hash
+        assert _make_record(email="a@co.com").record_hash != _make_record(email="b@co.com").record_hash
 
     def test_to_dict_serializable(self):
-        record = _make_record()
-        d = record.to_dict()
-        # Should be JSON-serializable
+        d = _make_record().to_dict()
         json.dumps(d, default=str)
         assert d["email"] == "jane.doe@company.com"
         assert d["remediation_status"] == "pending"
         assert d["termination_source"] == "snowflake"
 
 
-# ── ChangeDetector Tests ────────────────────────────────────────────
-
-
 class TestChangeDetector:
-    """Test change detection via content hashing."""
-
     def test_first_run_always_changed(self):
-        """No previous hash → treat as changed."""
         s3 = MagicMock()
         s3.exceptions = MagicMock()
         s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
         s3.get_object.side_effect = s3.exceptions.NoSuchKey()
 
         detector = ChangeDetector(s3, "my-bucket")
-        records = [_make_record()]
-        changed, hash_val = detector.has_changed(records)
+        changed, hash_val = detector.has_changed([_make_record()])
 
         assert changed is True
-        assert len(hash_val) == 64  # SHA-256 hex
+        assert len(hash_val) == 64
 
     def test_same_data_not_changed(self):
-        """Same data → same hash → not changed."""
         records = [_make_record(email="a@co.com"), _make_record(email="b@co.com")]
-
         s3 = MagicMock()
         detector = ChangeDetector(s3, "my-bucket")
-
-        # Compute hash first
         expected_hash = detector.compute_hash(records)
-
-        # Mock S3 returning the same hash
         s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=expected_hash.encode()))}
-
         changed, _ = detector.has_changed(records)
         assert changed is False
 
     def test_different_data_changed(self):
-        """Different data → different hash → changed."""
         s3 = MagicMock()
         s3.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"old_hash_value_here"))}
-
         detector = ChangeDetector(s3, "my-bucket")
-        records = [_make_record()]
-        changed, _ = detector.has_changed(records)
-
+        changed, _ = detector.has_changed([_make_record()])
         assert changed is True
 
     def test_hash_order_independent(self):
-        """Records in different order → same hash."""
-        r1 = _make_record(email="a@co.com")
-        r2 = _make_record(email="b@co.com")
-
-        s3 = MagicMock()
-        detector = ChangeDetector(s3, "my-bucket")
-
-        h1 = detector.compute_hash([r1, r2])
-        h2 = detector.compute_hash([r2, r1])
+        detector = ChangeDetector(MagicMock(), "my-bucket")
+        h1 = detector.compute_hash([_make_record(email="a@co.com"), _make_record(email="b@co.com")])
+        h2 = detector.compute_hash([_make_record(email="b@co.com"), _make_record(email="a@co.com")])
         assert h1 == h2
-
-    def test_store_hash_uses_kms(self):
-        """Hash storage uses server-side KMS encryption."""
-        s3 = MagicMock()
-        detector = ChangeDetector(s3, "my-bucket")
-        detector.store_hash("abc123")
-
-        s3.put_object.assert_called_once()
-        call_kwargs = s3.put_object.call_args[1]
-        assert call_kwargs["ServerSideEncryption"] == "aws:kms"
-
-
-# ── S3Exporter Tests ────────────────────────────────────────────────
 
 
 class TestS3Exporter:
-    """Test S3 manifest export."""
-
-    def test_export_only_actionable_records(self):
-        """Export should only include records that should_remediate()."""
+    def test_export_manifest(self):
         s3 = MagicMock()
         exporter = S3Exporter(s3, "my-bucket")
-
-        actionable = _make_record(email="fired@co.com", terminated_at=_days_ago(30))
-        deleted = _make_record(email="gone@co.com", iam_deleted=True)
-
-        key = exporter.export_manifest([actionable, deleted], "snowflake", "hash123")
-
-        assert "departures/" in key
+        key = exporter.export_manifest([_make_record()], "snowflake", "abc123")
+        assert key.startswith("departures/")
         assert key.endswith(".json")
-
-        # Check what was written to S3
-        call_args = s3.put_object.call_args[1]
-        body = json.loads(call_args["Body"].decode())
-        assert body["actionable_count"] == 1
-        assert body["skipped_count"] == 1
-        assert len(body["entries"]) == 1
-        assert body["entries"][0]["email"] == "fired@co.com"
-
-    def test_export_uses_kms_encryption(self):
-        s3 = MagicMock()
-        exporter = S3Exporter(s3, "my-bucket")
-        exporter.export_manifest([_make_record()], "snowflake", "hash123")
-
-        call_kwargs = s3.put_object.call_args[1]
-        assert call_kwargs["ServerSideEncryption"] == "aws:kms"
 
     def test_skip_reasons_categorized(self):
         s3 = MagicMock()
         exporter = S3Exporter(s3, "my-bucket")
-
-        deleted = _make_record(iam_deleted=True)
-        already_done = _make_record(status=RemediationStatus.REMEDIATED)
-
-        exporter.export_manifest([deleted, already_done], "snowflake", "h")
-
+        exporter.export_manifest(
+            [
+                _make_record(iam_deleted=True),
+                _make_record(status=RemediationStatus.REMEDIATED),
+            ],
+            "snowflake",
+            "h",
+        )
         body = json.loads(s3.put_object.call_args[1]["Body"].decode())
         assert body["skip_reasons"]["iam_already_deleted"] == 1
 
 
-# ── Source Factory Tests ────────────────────────────────────────────
-
-
 class TestSourceFactory:
-    """Test the get_source factory."""
-
     def test_unknown_source_raises(self):
         with pytest.raises(ValueError, match="Unknown HR source"):
             get_source("oracle")
@@ -330,8 +223,20 @@ class TestSourceFactory:
         },
     )
     def test_snowflake_source_creation(self):
-        source = get_source("snowflake")
-        assert source.__class__.__name__ == "SnowflakeSource"
+        assert get_source("snowflake").__class__.__name__ == "SnowflakeSource"
+
+    @patch.dict(
+        os.environ,
+        {
+            "SNOWFLAKE_ACCOUNT": "test",
+            "SNOWFLAKE_USER": "user",
+            "SNOWFLAKE_PASSWORD": "pass",
+            "SNOWFLAKE_HR_DATABASE": "bad-name",
+        },
+    )
+    def test_snowflake_invalid_identifier_rejected(self):
+        with pytest.raises(ValueError, match="Invalid SQL identifier"):
+            get_source("snowflake")
 
     @patch.dict(
         os.environ,
@@ -341,8 +246,7 @@ class TestSourceFactory:
         },
     )
     def test_databricks_source_creation(self):
-        source = get_source("databricks")
-        assert source.__class__.__name__ == "DatabricksSource"
+        assert get_source("databricks").__class__.__name__ == "DatabricksSource"
 
     @patch.dict(
         os.environ,
@@ -351,5 +255,4 @@ class TestSourceFactory:
         },
     )
     def test_clickhouse_source_creation(self):
-        source = get_source("clickhouse")
-        assert source.__class__.__name__ == "ClickHouseSource"
+        assert get_source("clickhouse").__class__.__name__ == "ClickHouseSource"

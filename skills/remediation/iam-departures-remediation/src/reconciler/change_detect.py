@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from reconciler.sources import DepartureRecord
@@ -33,7 +33,7 @@ class ChangeDetector:
 
     HASH_KEY = "departures/.last_hash"
 
-    def __init__(self, s3_client: object, bucket: str) -> None:
+    def __init__(self, s3_client: Any, bucket: str) -> None:
         self.s3 = s3_client
         self.bucket = bucket
 
@@ -47,8 +47,15 @@ class ChangeDetector:
             records,
             key=lambda r: (r.email, r.recipient_account_id),
         )
+        stable_records = []
+        for record in sorted_records:
+            payload = record.to_dict()
+            # Observation timestamps change every run and should not trigger
+            # a remediation export when the underlying departure data is unchanged.
+            payload.pop("last_checked_at", None)
+            stable_records.append(payload)
         payload = json.dumps(
-            [r.to_dict() for r in sorted_records],
+            stable_records,
             sort_keys=True,
             default=str,
         )

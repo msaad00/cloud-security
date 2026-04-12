@@ -5,28 +5,35 @@ Uses moto to mock AWS services — no real AWS credentials needed.
 
 from __future__ import annotations
 
-import os
+import importlib.util
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import boto3
 from moto import mock_aws
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+_SRC = Path(__file__).resolve().parent.parent / "src" / "checks.py"
+_SPEC = importlib.util.spec_from_file_location("cspm_aws_checks", _SRC)
+assert _SPEC and _SPEC.loader
+_CHECKS = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = _CHECKS
+_SPEC.loader.exec_module(_CHECKS)
 
-from checks import (
-    Finding,
-    check_1_1_root_mfa,
-    check_1_2_user_mfa,
-    check_1_5_password_policy,
-    check_1_6_no_root_keys,
-    check_1_7_no_inline_policies,
-    check_2_1_s3_encryption,
-    check_2_3_s3_public_access,
-    check_2_4_s3_versioning,
-    check_4_1_no_unrestricted_ssh,
-    check_4_2_no_unrestricted_rdp,
-    check_4_3_vpc_flow_logs,
-)
+Finding = _CHECKS.Finding
+_run_check = _CHECKS._run_check
+check_1_1_root_mfa = _CHECKS.check_1_1_root_mfa
+check_1_2_user_mfa = _CHECKS.check_1_2_user_mfa
+check_1_5_password_policy = _CHECKS.check_1_5_password_policy
+check_1_6_no_root_keys = _CHECKS.check_1_6_no_root_keys
+check_1_7_no_inline_policies = _CHECKS.check_1_7_no_inline_policies
+check_2_1_s3_encryption = _CHECKS.check_2_1_s3_encryption
+check_2_3_s3_public_access = _CHECKS.check_2_3_s3_public_access
+check_2_4_s3_versioning = _CHECKS.check_2_4_s3_versioning
+check_3_4_cloudwatch_alarms = _CHECKS.check_3_4_cloudwatch_alarms
+check_4_1_no_unrestricted_ssh = _CHECKS.check_4_1_no_unrestricted_ssh
+check_4_2_no_unrestricted_rdp = _CHECKS.check_4_2_no_unrestricted_rdp
+check_4_3_vpc_flow_logs = _CHECKS.check_4_3_vpc_flow_logs
 
 
 @mock_aws
@@ -152,3 +159,23 @@ class TestFindingCompliance:
         for f in checks:
             assert f.nist_csf, f"Check {f.control_id} missing NIST CSF mapping"
             assert f.iso_27001, f"Check {f.control_id} missing ISO 27001 mapping"
+
+
+class TestRunnerRouting:
+    def test_run_check_routes_logging_checks_to_cloudwatch(self):
+        clients = {
+            "iam": MagicMock(),
+            "s3": MagicMock(),
+            "ct": MagicMock(),
+            "cw": MagicMock(),
+            "ec2": MagicMock(),
+        }
+        clients["cw"].describe_alarms.return_value = {
+            "MetricAlarms": [{"AlarmName": "cis-cloudtrail-alarm"}]
+        }
+
+        finding = _run_check(check_3_4_cloudwatch_alarms, clients)
+
+        assert finding.control_id == "3.4"
+        clients["cw"].describe_alarms.assert_called_once()
+        clients["iam"].describe_alarms.assert_not_called()

@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from . import CloudProvider, RemediationResult, RemediationStatus, RemediationStep
 
@@ -68,6 +69,7 @@ _OWNERSHIP_OBJECT_TYPES = [
     "FILE FORMATS",
     "SEQUENCES",
 ]
+_IDENTIFIER_RE = re.compile(r"^[^\x00\r\n]+$")
 
 
 def get_required_permissions() -> list[str]:
@@ -173,8 +175,7 @@ _STEP_NAMES = [
 def _abort_queries(cursor, username: str, step: int) -> RemediationStep:
     """ALTER USER {name} ABORT ALL QUERIES — kills active sessions."""
     try:
-        # Identifier must be quoted to handle special characters
-        cursor.execute(f'ALTER USER "{username}" ABORT ALL QUERIES')
+        cursor.execute(f"ALTER USER {_quote_identifier(username)} ABORT ALL QUERIES")
         return RemediationStep(step_number=step, action="abort_active_queries", target=username, detail="All active queries aborted")
     except Exception as e:
         logger.warning("Failed to abort queries for %s: %s", username, e)
@@ -186,7 +187,7 @@ def _abort_queries(cursor, username: str, step: int) -> RemediationStep:
 def _disable_user(cursor, username: str, step: int) -> RemediationStep:
     """ALTER USER SET DISABLED=TRUE — prevents new logins."""
     try:
-        cursor.execute(f'ALTER USER "{username}" SET DISABLED = TRUE')
+        cursor.execute(f"ALTER USER {_quote_identifier(username)} SET DISABLED = TRUE")
         return RemediationStep(step_number=step, action="disable_user", target=username, detail="User disabled (no new logins)")
     except Exception as e:
         logger.warning("Failed to disable user %s: %s", username, e)
@@ -196,7 +197,8 @@ def _disable_user(cursor, username: str, step: int) -> RemediationStep:
 def _revoke_roles(cursor, username: str, step: int) -> RemediationStep:
     """SHOW GRANTS TO USER then REVOKE ROLE for each (except PUBLIC)."""
     try:
-        cursor.execute(f'SHOW GRANTS TO USER "{username}"')
+        quoted_username = _quote_identifier(username)
+        cursor.execute(f"SHOW GRANTS TO USER {quoted_username}")
         grants = cursor.fetchall()
 
         revoked = 0
@@ -207,7 +209,7 @@ def _revoke_roles(cursor, username: str, step: int) -> RemediationStep:
                 skipped += 1
                 continue
             try:
-                cursor.execute(f'REVOKE ROLE "{role_name}" FROM USER "{username}"')
+                cursor.execute(f"REVOKE ROLE {_quote_identifier(role_name)} FROM USER {quoted_username}")
                 revoked += 1
             except Exception:
                 skipped += 1
@@ -230,6 +232,8 @@ def _transfer_ownership(cursor, username: str, target_role: str, step: int) -> R
     Each object type requires a separate GRANT OWNERSHIP statement.
     """
     try:
+        _quote_identifier(username)
+        quoted_target_role = _quote_identifier(target_role)
         transferred = 0
         errors = 0
 
@@ -239,7 +243,8 @@ def _transfer_ownership(cursor, username: str, target_role: str, step: int) -> R
 
         for db in databases:
             try:
-                cursor.execute(f'SHOW SCHEMAS IN DATABASE "{db}"')
+                quoted_db = _quote_identifier(db)
+                cursor.execute(f"SHOW SCHEMAS IN DATABASE {quoted_db}")
                 schemas = [row[1] for row in cursor.fetchall()]
             except Exception:
                 continue
@@ -250,7 +255,7 @@ def _transfer_ownership(cursor, username: str, target_role: str, step: int) -> R
                 for obj_type in _OWNERSHIP_OBJECT_TYPES:
                     try:
                         cursor.execute(
-                            f'GRANT OWNERSHIP ON ALL {obj_type} IN SCHEMA "{db}"."{schema}" TO ROLE "{target_role}" COPY CURRENT GRANTS'
+                            f"GRANT OWNERSHIP ON ALL {obj_type} IN SCHEMA {quoted_db}.{_quote_identifier(schema)} TO ROLE {quoted_target_role} COPY CURRENT GRANTS"
                         )
                         transferred += 1
                     except Exception:
@@ -272,7 +277,7 @@ def _transfer_ownership(cursor, username: str, target_role: str, step: int) -> R
 def _drop_user(cursor, username: str, step: int) -> RemediationStep:
     """DROP USER IF EXISTS — permanent deletion (no soft delete in Snowflake)."""
     try:
-        cursor.execute(f'DROP USER IF EXISTS "{username}"')
+        cursor.execute(f"DROP USER IF EXISTS {_quote_identifier(username)}")
         return RemediationStep(step_number=step, action="drop_user", target=username, detail="User dropped (permanent, no soft delete)")
     except Exception as e:
         logger.warning("Failed to drop user %s: %s", username, e)
@@ -282,7 +287,7 @@ def _drop_user(cursor, username: str, step: int) -> RemediationStep:
 def _verify_dropped(cursor, username: str, step: int) -> RemediationStep:
     """Verify the user no longer exists in Snowflake."""
     try:
-        cursor.execute(f"SHOW USERS LIKE '{username}'")
+        cursor.execute(f"SHOW USERS LIKE {_quote_string_literal(username)}")
         rows = cursor.fetchall()
         if rows:
             return RemediationStep(
@@ -296,3 +301,19 @@ def _verify_dropped(cursor, username: str, step: int) -> RemediationStep:
     except Exception as e:
         logger.warning("Failed to verify user drop for %s: %s", username, e)
         return RemediationStep(step_number=step, action="verify_dropped", target=username, status=RemediationStatus.FAILED, error=str(e))
+
+
+def _quote_identifier(value: str) -> str:
+    """Quote a Snowflake identifier safely for DDL statements."""
+    if not isinstance(value, str) or not value.strip() or not _IDENTIFIER_RE.fullmatch(value):
+        raise ValueError("Invalid Snowflake identifier")
+    escaped = value.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def _quote_string_literal(value: str) -> str:
+    """Quote a Snowflake string literal safely."""
+    if not isinstance(value, str) or not _IDENTIFIER_RE.fullmatch(value):
+        raise ValueError("Invalid Snowflake string literal")
+    escaped = value.replace("'", "''")
+    return f"'{escaped}'"

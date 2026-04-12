@@ -229,7 +229,7 @@ def check_4_2_no_unrestricted_ssh_rdp(compute_client, project_id: str) -> Findin
                     else:
                         ports.append(int(p))
                 if (22 in ports or 3389 in ports) and "0.0.0.0/0" in (rule.source_ranges or []):
-                    open_rules.append(f"{rule.name}: {allowed.I_p_protocol}/{','.join(allowed.ports or [])}")
+                    open_rules.append(f"{rule.name}: {allowed.ip_protocol}/{','.join(allowed.ports or [])}")
         return Finding(
             control_id="4.2",
             title="No unrestricted SSH/RDP",

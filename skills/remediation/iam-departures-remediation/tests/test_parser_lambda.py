@@ -163,3 +163,12 @@ class TestParserHandler:
         assert result["validation_summary"]["total_entries"] == 2
         # 1 actionable (valid), 1 skipped (deleted)
         assert result["validation_summary"]["skipped_count"] >= 1
+
+    @patch("lambda_parser.handler.boto3")
+    def test_handler_rejects_invalid_event_payload(self, mock_boto3):
+        result = handler({"bucket": "", "key": ""}, None)
+
+        assert result["validated_entries"] == []
+        assert result["validation_summary"]["error_count"] == 1
+        assert "Invalid event payload" in result["validation_summary"]["errors"][0]["error"]
+        mock_boto3.client.assert_not_called()
