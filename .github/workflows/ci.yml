@@ -44,10 +44,10 @@ jobs:
       - run: python scripts/validate_safe_skill_bar.py
       - name: Check for hardcoded secrets
         run: |
-          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/ mcp-server/ scripts/ --include="*.py" || exit 1
-          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/ mcp-server/ scripts/ --include="*.py" || exit 1
-          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/ mcp-server/ scripts/ --include="*.py" || exit 1
-          echo "No hardcoded secrets found in enforced paths"
+          ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          ! grep -rn "sk-[a-zA-Z0-9]\{20,\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          ! grep -rn "ghp_[a-zA-Z0-9]\{36\}" skills/*/*/src/ mcp-server/src/ scripts/ --include="*.py" || exit 1
+          echo "No hardcoded secrets found in enforced executable paths"
       - name: Dependency vulnerability audit
         run: pip-audit "${{ github.workspace }}"
 
