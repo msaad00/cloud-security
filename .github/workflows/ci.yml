@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.11"
           packages: ruff
-      - run: ruff check skills/ tests/ --config pyproject.toml
+      - run: ruff check skills/ tests/ mcp-server/ scripts/ --config pyproject.toml
 
   skill-contract:
     runs-on: ubuntu-latest
@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: "3.11"
           packages: bandit
-      - run: bandit -r skills/compliance-cis-mitre/cspm-aws-cis-benchmark skills/remediation/iam-departures-remediation -c pyproject.toml --severity-level medium
+      - run: bandit -r skills/compliance-cis-mitre/cspm-aws-cis-benchmark skills/remediation/iam-departures-remediation mcp-server -c pyproject.toml --severity-level medium
       - name: Check for hardcoded secrets
         run: |
           ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ --include="*.py" || exit 1
@@ -150,7 +150,7 @@ jobs:
         with:
           python-version: "3.11"
           packages: pytest pytest-cov
-      - run: pytest tests/integration/ -v -o "testpaths=tests"
+      - run: pytest tests/integration/ mcp-server/tests/ -v -o "testpaths=tests"
 
   # ── IaC validation (CloudFormation + Terraform in one job) ─────
   validate-iac:

@@ -1,0 +1,58 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REGISTRY_PATH = REPO_ROOT / "mcp-server" / "src" / "tool_registry.py"
+SPEC = importlib.util.spec_from_file_location("cloud_security_tool_registry", REGISTRY_PATH)
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = MODULE
+SPEC.loader.exec_module(MODULE)
+
+build_command = MODULE.build_command
+discover_skills = MODULE.discover_skills
+supported_skills = MODULE.supported_skills
+tool_definition = MODULE.tool_definition
+tool_map = MODULE.tool_map
+
+
+class TestDiscovery:
+    def test_discovers_all_skills(self):
+        skills = discover_skills(REPO_ROOT)
+        assert len(skills) == 23
+        assert {skill.name for skill in skills} >= {
+            "ingest-cloudtrail-ocsf",
+            "detect-lateral-movement-aws",
+            "cspm-aws-cis-benchmark",
+            "iam-departures-remediation",
+        }
+
+    def test_marks_remediation_skill_without_cli_entrypoint_as_unsupported(self):
+        skills = {skill.name: skill for skill in discover_skills(REPO_ROOT)}
+        assert skills["iam-departures-remediation"].supported is False
+        assert skills["iam-departures-remediation"].capability == "write-remediation"
+
+    def test_supported_tools_include_ingest_detect_and_evaluate(self):
+        tools = tool_map(REPO_ROOT)
+        assert "ingest-cloudtrail-ocsf" in tools
+        assert "detect-lateral-movement-aws" in tools
+        assert "model-serving-security" in tools
+
+
+class TestToolDefinition:
+    def test_tool_definition_comes_from_skill_metadata(self):
+        skill = tool_map(REPO_ROOT)["ingest-cloudtrail-ocsf"]
+        tool = tool_definition(skill)
+        assert tool["name"] == "ingest-cloudtrail-ocsf"
+        assert "CloudTrail" in tool["description"]
+        assert tool["annotations"]["readOnlyHint"] is True
+        assert tool["inputSchema"]["properties"]["args"]["type"] == "array"
+
+    def test_build_command_uses_fixed_entrypoint(self):
+        skill = tool_map(REPO_ROOT)["detect-lateral-movement-aws"]
+        command = build_command(skill, ["--output", "findings.jsonl"])
+        assert command[1].endswith("skills/detection-engineering/detect-lateral-movement-aws/src/detect.py")
+        assert command[-2:] == ["--output", "findings.jsonl"]

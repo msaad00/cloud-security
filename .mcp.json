@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cloud-security": {
+      "command": "python3",
+      "args": ["mcp-server/src/server.py"]
+    }
+  }
+}
