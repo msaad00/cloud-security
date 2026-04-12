@@ -6,8 +6,10 @@ Read-only: requires SecurityAudit managed policy.
 
 Frameworks:
     CIS AWS Foundations v3.0
-    NIST CSF 2.0: PR.AC-1, PR.AC-3, PR.AC-4, PR.AC-5, PR.DS-1, PR.DS-6, DE.AE-3, DE.CM-1
-    ISO 27001:2022: A.5.15, A.5.17, A.5.18, A.8.2, A.8.3, A.8.5, A.8.13, A.8.15, A.8.16, A.8.20, A.8.24
+    NIST CSF 2.0: PR.AC-1, PR.AC-3, PR.AC-4, PR.AC-5, PR.DS-1, PR.DS-6,
+                  DE.AE-3, DE.CM-1
+    ISO 27001:2022: A.5.15, A.5.17, A.5.18, A.8.2, A.8.3, A.8.5, A.8.13,
+                    A.8.15, A.8.16, A.8.20, A.8.24
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import argparse
 import json
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import boto3
@@ -38,6 +40,25 @@ class Finding:
     nist_csf: str = ""
     iso_27001: str = ""
     resources: list[str] = field(default_factory=list)
+
+
+def _paginate(
+    client: Any, operation_name: str, result_key: str, **kwargs: Any
+) -> list[dict[str, Any]]:
+    """Return all items for a paginated IAM-style operation.
+
+    boto3 paginators are preferred for correctness on large accounts. The fallback
+    keeps tests and minimal stubs working when a paginator is unavailable.
+    """
+    try:
+        paginator = client.get_paginator(operation_name)
+    except Exception:
+        return client.__getattribute__(operation_name)(**kwargs).get(result_key, [])
+
+    items: list[dict[str, Any]] = []
+    for page in paginator.paginate(**kwargs):
+        items.extend(page.get(result_key, []))
+    return items
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +97,7 @@ def check_1_1_root_mfa(iam) -> Finding:
 def check_1_2_user_mfa(iam) -> Finding:
     """CIS 1.2 — MFA for console users."""
     try:
-        users = iam.list_users()["Users"]
+        users = _paginate(iam, "list_users", "Users")
         no_mfa = []
         for user in users:
             try:
@@ -92,7 +113,9 @@ def check_1_2_user_mfa(iam) -> Finding:
             section="iam",
             severity="HIGH",
             status="FAIL" if no_mfa else "PASS",
-            detail=f"{len(no_mfa)} console users without MFA" if no_mfa else "All console users have MFA",
+            detail=f"{len(no_mfa)} console users without MFA"
+            if no_mfa
+            else "All console users have MFA",
             nist_csf="PR.AC-1",
             iso_27001="A.8.5",
             resources=no_mfa,
@@ -115,7 +138,7 @@ def check_1_3_stale_credentials(iam) -> Finding:
     try:
         iam.generate_credential_report()
         report = iam.get_credential_report()["Content"].decode()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stale = []
         for line in report.strip().split("\n")[1:]:  # skip header
             fields = line.split(",")
@@ -134,7 +157,9 @@ def check_1_3_stale_credentials(iam) -> Finding:
             section="iam",
             severity="MEDIUM",
             status="FAIL" if stale else "PASS",
-            detail=f"{len(stale)} users with stale credentials" if stale else "No stale credentials",
+            detail=f"{len(stale)} users with stale credentials"
+            if stale
+            else "No stale credentials",
             nist_csf="PR.AC-1",
             iso_27001="A.5.18",
             resources=stale,
@@ -155,12 +180,14 @@ def check_1_3_stale_credentials(iam) -> Finding:
 def check_1_4_key_rotation(iam) -> Finding:
     """CIS 1.4 — Access keys rotated within 90 days."""
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         old_keys = []
-        for user in iam.list_users()["Users"]:
-            for key in iam.list_access_keys(UserName=user["UserName"])["AccessKeyMetadata"]:
+        for user in _paginate(iam, "list_users", "Users"):
+            for key in _paginate(
+                iam, "list_access_keys", "AccessKeyMetadata", UserName=user["UserName"]
+            ):
                 if key["Status"] == "Active":
-                    age = (now - key["CreateDate"].replace(tzinfo=timezone.utc)).days
+                    age = (now - key["CreateDate"].replace(tzinfo=UTC)).days
                     if age > 90:
                         old_keys.append(f"{user['UserName']}:{key['AccessKeyId']} ({age}d)")
         return Finding(
@@ -169,7 +196,9 @@ def check_1_4_key_rotation(iam) -> Finding:
             section="iam",
             severity="MEDIUM",
             status="FAIL" if old_keys else "PASS",
-            detail=f"{len(old_keys)} keys older than 90 days" if old_keys else "All keys within 90 days",
+            detail=f"{len(old_keys)} keys older than 90 days"
+            if old_keys
+            else "All keys within 90 days",
             nist_csf="PR.AC-1",
             iso_27001="A.5.17",
             resources=old_keys,
@@ -236,7 +265,9 @@ def check_1_6_no_root_keys(iam) -> Finding:
             section="iam",
             severity="CRITICAL",
             status="PASS" if root_keys == 0 else "FAIL",
-            detail="No root access keys" if root_keys == 0 else f"Root has {root_keys} access key(s)",
+            detail="No root access keys"
+            if root_keys == 0
+            else f"Root has {root_keys} access key(s)",
             nist_csf="PR.AC-4",
             iso_27001="A.8.2",
         )
@@ -257,8 +288,10 @@ def check_1_7_no_inline_policies(iam) -> Finding:
     """CIS 1.7 — IAM policies not inline."""
     try:
         inline_users = []
-        for user in iam.list_users()["Users"]:
-            policies = iam.list_user_policies(UserName=user["UserName"])["PolicyNames"]
+        for user in _paginate(iam, "list_users", "Users"):
+            policies = _paginate(
+                iam, "list_user_policies", "PolicyNames", UserName=user["UserName"]
+            )
             if policies:
                 inline_users.append(user["UserName"])
         return Finding(
@@ -267,7 +300,9 @@ def check_1_7_no_inline_policies(iam) -> Finding:
             section="iam",
             severity="LOW",
             status="FAIL" if inline_users else "PASS",
-            detail=f"{len(inline_users)} users with inline policies" if inline_users else "No inline policies",
+            detail=f"{len(inline_users)} users with inline policies"
+            if inline_users
+            else "No inline policies",
             nist_csf="PR.AC-4",
             iso_27001="A.5.15",
             resources=inline_users,
@@ -307,7 +342,9 @@ def check_2_1_s3_encryption(s3) -> Finding:
             section="storage",
             severity="HIGH",
             status="FAIL" if unencrypted else "PASS",
-            detail=f"{len(unencrypted)} buckets without encryption" if unencrypted else "All buckets encrypted",
+            detail=f"{len(unencrypted)} buckets without encryption"
+            if unencrypted
+            else "All buckets encrypted",
             nist_csf="PR.DS-1",
             iso_27001="A.8.24",
             resources=unencrypted,
@@ -340,7 +377,9 @@ def check_2_2_s3_logging(s3) -> Finding:
             section="storage",
             severity="MEDIUM",
             status="FAIL" if no_logging else "PASS",
-            detail=f"{len(no_logging)} buckets without logging" if no_logging else "All buckets have logging",
+            detail=f"{len(no_logging)} buckets without logging"
+            if no_logging
+            else "All buckets have logging",
             nist_csf="DE.AE-3",
             iso_27001="A.8.15",
             resources=no_logging,
@@ -365,7 +404,9 @@ def check_2_3_s3_public_access(s3) -> Finding:
         public_buckets = []
         for bucket in buckets:
             try:
-                pab = s3.get_public_access_block(Bucket=bucket["Name"])["PublicAccessBlockConfiguration"]
+                pab = s3.get_public_access_block(Bucket=bucket["Name"])[
+                    "PublicAccessBlockConfiguration"
+                ]
                 if not all(
                     [
                         pab.get("BlockPublicAcls", False),
@@ -418,7 +459,9 @@ def check_2_4_s3_versioning(s3) -> Finding:
             section="storage",
             severity="MEDIUM",
             status="FAIL" if no_versioning else "PASS",
-            detail=f"{len(no_versioning)} buckets without versioning" if no_versioning else "All buckets versioned",
+            detail=f"{len(no_versioning)} buckets without versioning"
+            if no_versioning
+            else "All buckets versioned",
             nist_csf="PR.DS-1",
             iso_27001="A.8.13",
             resources=no_versioning,
@@ -457,7 +500,9 @@ def check_3_1_cloudtrail_multiregion(ct) -> Finding:
             section="logging",
             severity="CRITICAL",
             status="PASS" if active_mr else "FAIL",
-            detail=f"{len(active_mr)} active multi-region trail(s)" if active_mr else "No active multi-region trail",
+            detail=f"{len(active_mr)} active multi-region trail(s)"
+            if active_mr
+            else "No active multi-region trail",
             nist_csf="DE.AE-3",
             iso_27001="A.8.15",
             resources=active_mr,
@@ -486,7 +531,9 @@ def check_3_2_cloudtrail_validation(ct) -> Finding:
             section="logging",
             severity="HIGH",
             status="FAIL" if no_validation else "PASS",
-            detail=f"{len(no_validation)} trails without log validation" if no_validation else "All trails have log validation",
+            detail=f"{len(no_validation)} trails without log validation"
+            if no_validation
+            else "All trails have log validation",
             nist_csf="PR.DS-6",
             iso_27001="A.8.15",
             resources=no_validation,
@@ -562,7 +609,9 @@ def check_3_4_cloudwatch_alarms(cw) -> Finding:
             section="logging",
             severity="MEDIUM",
             status="PASS" if alarms else "FAIL",
-            detail=f"{len(alarms)} alarm(s) configured" if alarms else "No CloudWatch alarms configured",
+            detail=f"{len(alarms)} alarm(s) configured"
+            if alarms
+            else "No CloudWatch alarms configured",
             nist_csf="DE.CM-1",
             iso_27001="A.8.16",
         )
@@ -606,7 +655,9 @@ def _check_unrestricted_port(ec2, port: int, control_id: str, title: str) -> Fin
             section="networking",
             severity="HIGH",
             status="FAIL" if open_sgs else "PASS",
-            detail=f"{len(open_sgs)} SGs allow 0.0.0.0/0:{port}" if open_sgs else f"No SGs allow unrestricted port {port}",
+            detail=f"{len(open_sgs)} SGs allow 0.0.0.0/0:{port}"
+            if open_sgs
+            else f"No SGs allow unrestricted port {port}",
             nist_csf="PR.AC-5",
             iso_27001="A.8.20",
             resources=open_sgs,
@@ -647,7 +698,9 @@ def check_4_3_vpc_flow_logs(ec2) -> Finding:
             section="networking",
             severity="MEDIUM",
             status="FAIL" if no_logs else "PASS",
-            detail=f"{len(no_logs)} VPCs without flow logs" if no_logs else "All VPCs have flow logs",
+            detail=f"{len(no_logs)} VPCs without flow logs"
+            if no_logs
+            else "All VPCs have flow logs",
             nist_csf="DE.CM-1",
             iso_27001="A.8.16",
             resources=no_logs,
@@ -679,14 +732,23 @@ SECTIONS: dict[str, list] = {
         check_1_6_no_root_keys,
         check_1_7_no_inline_policies,
     ],
-    "storage": [check_2_1_s3_encryption, check_2_2_s3_logging, check_2_3_s3_public_access, check_2_4_s3_versioning],
+    "storage": [
+        check_2_1_s3_encryption,
+        check_2_2_s3_logging,
+        check_2_3_s3_public_access,
+        check_2_4_s3_versioning,
+    ],
     "logging": [
         check_3_1_cloudtrail_multiregion,
         check_3_2_cloudtrail_validation,
         check_3_3_cloudtrail_s3_not_public,
         check_3_4_cloudwatch_alarms,
     ],
-    "networking": [check_4_1_no_unrestricted_ssh, check_4_2_no_unrestricted_rdp, check_4_3_vpc_flow_logs],
+    "networking": [
+        check_4_1_no_unrestricted_ssh,
+        check_4_2_no_unrestricted_rdp,
+        check_4_3_vpc_flow_logs,
+    ],
 }
 
 
@@ -706,11 +768,11 @@ def _run_check(fn, clients: dict) -> Finding:
     name = fn.__name__
     if "cloudtrail_s3" in name:
         return fn(clients["ct"], clients["s3"])
-    if name.startswith("check_1") or name.startswith("check_1"):
+    if name.startswith("check_1"):
         return fn(clients["iam"])
     if name.startswith("check_2"):
         return fn(clients["s3"])
-    if "cloudtrail" in name or "cloudwatch" in name:
+    if name.startswith("check_3") or "cloudtrail" in name or "cloudwatch" in name:
         return fn(clients["ct"] if "cloudtrail" in name else clients["cw"])
     if name.startswith("check_4"):
         return fn(clients["ec2"])
@@ -730,11 +792,20 @@ def run_assessment(region: str = "us-east-1", section: str | None = None) -> lis
 
 
 def _severity_color(severity: str) -> str:
-    return {"CRITICAL": "\033[91m", "HIGH": "\033[93m", "MEDIUM": "\033[33m", "LOW": "\033[36m"}.get(severity, "")
+    return {
+        "CRITICAL": "\033[91m",
+        "HIGH": "\033[93m",
+        "MEDIUM": "\033[33m",
+        "LOW": "\033[36m",
+    }.get(severity, "")
 
 
 def _status_symbol(status: str) -> str:
-    return {"PASS": "\033[92m✓\033[0m", "FAIL": "\033[91m✗\033[0m", "ERROR": "\033[90m?\033[0m"}.get(status, "?")
+    return {
+        "PASS": "\033[92m✓\033[0m",
+        "FAIL": "\033[91m✗\033[0m",
+        "ERROR": "\033[90m?\033[0m",
+    }.get(status, "?")
 
 
 def print_summary(findings: list[Finding]) -> None:
@@ -772,8 +843,12 @@ def print_summary(findings: list[Finding]) -> None:
 def main():
     parser = argparse.ArgumentParser(description="CIS AWS Foundations Benchmark v3.0 Assessment")
     parser.add_argument("--region", default="us-east-1", help="AWS region (default: us-east-1)")
-    parser.add_argument("--section", choices=list(SECTIONS.keys()), help="Run specific section only")
-    parser.add_argument("--output", choices=["console", "json"], default="console", help="Output format")
+    parser.add_argument(
+        "--section", choices=list(SECTIONS.keys()), help="Run specific section only"
+    )
+    parser.add_argument(
+        "--output", choices=["console", "json"], default="console", help="Output format"
+    )
     args = parser.parse_args()
 
     findings = run_assessment(region=args.region, section=args.section)
@@ -784,7 +859,9 @@ def main():
         print_summary(findings)
 
     # Exit code: 1 if any CRITICAL/HIGH failures
-    critical_high_fails = [f for f in findings if f.status == "FAIL" and f.severity in ("CRITICAL", "HIGH")]
+    critical_high_fails = [
+        f for f in findings if f.status == "FAIL" and f.severity in ("CRITICAL", "HIGH")
+    ]
     sys.exit(1 if critical_high_fails else 0)
 
 

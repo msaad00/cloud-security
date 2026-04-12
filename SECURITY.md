@@ -1,38 +1,33 @@
 # Security Policy
 
+## Supported Versions
+
+The `main` branch is the supported release line. Security fixes land there first.
+
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in this project, please report it responsibly.
+Please do not open public GitHub issues for suspected vulnerabilities.
 
-**Do NOT open a public GitHub issue for security vulnerabilities.**
+Send reports through [GitHub private security reporting](https://github.com/msaad00/cloud-security/security/advisories/new)
+or directly by email if a contact is listed on the maintainer profile. Include:
 
-Instead, please email security findings to the maintainer or use [GitHub's private vulnerability reporting](https://github.com/msaad00/cloud-security/security/advisories/new).
+- affected skill and file path
+- impact and attack scenario
+- steps to reproduce
+- proof-of-concept details if available
+- whether secrets, credentials, or customer data were involved
 
-### What to include
+## Response Expectations
 
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+- initial acknowledgment target: 48 hours
+- remediation triage target: 7 business days
+- coordinated disclosure after a fix or mitigation is available
 
-### Response timeline
+## Secure Usage Requirements
 
-- **Acknowledgement**: Within 48 hours
-- **Assessment**: Within 7 days
-- **Fix**: Critical vulnerabilities patched within 14 days
-
-## Security practices in this repo
-
-- All credentials are loaded from environment variables, never hardcoded
-- CSPM skills use read-only cloud permissions (SecurityAudit / Viewer roles)
-- Remediation skills use least-privilege IAM with explicit deny policies on protected accounts
-- S3 artifacts are KMS-encrypted
-- Cross-account access is scoped by `aws:PrincipalOrgID`
-- All Lambda functions run in VPC with no public internet access (unless NAT required)
-
-## Supported versions
-
-| Version | Supported |
-|---------|-----------|
-| Latest main | Yes |
-| Feature branches | No |
+- never commit credentials, tokens, or customer data
+- source runtime secrets from AWS Secrets Manager, SSM Parameter Store, Vault, or workload identity
+- prefer federation and short-lived credentials over static passwords or long-lived API tokens
+- keep CSPM execution roles read-only unless the skill is explicitly remediation-oriented
+- run CI checks before merging changes that affect IAM, cloud auth, or infrastructure templates
+- keep S3 artifacts KMS-encrypted and scope cross-account trust by `aws:PrincipalOrgID`

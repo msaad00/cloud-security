@@ -1,32 +1,73 @@
 [project]
-name = "cloud-security-skills"
-version = "0.2.0"
-description = "Cloud security skills collection — reusable security automation for AI agents"
+name = "cloud-security"
+version = "0.3.0"
+description = "Cloud security automations, benchmark checks, and remediation skills."
+readme = "README.md"
 requires-python = ">=3.11"
-license = "Apache-2.0"
+license = { text = "Apache-2.0" }
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+  "bandit[toml]>=1.7.9,<2",
+  "moto>=5,<6",
+  "mypy>=1.11,<2",
+  "pip-audit>=2.7,<3",
+  "pre-commit>=3.8,<4",
+  "pytest>=8.3,<9",
+  "pytest-cov>=5,<6",
+  "ruff>=0.6.9,<1",
+]
+aws = [
+  "boto3>=1.35,<2",
+]
+gcp = [
+  "google-cloud-compute>=1.19,<2",
+  "google-cloud-iam>=2.16,<3",
+  "google-cloud-resource-manager>=1.12,<2",
+  "google-cloud-storage>=2.18,<3",
+]
+azure = [
+  "azure-identity>=1.17,<2",
+  "azure-mgmt-network>=28,<29",
+  "azure-mgmt-storage>=21,<22",
+]
+iam_departures = [
+  "clickhouse-connect>=0.7,<1",
+  "databricks-sql-connector>=3.5,<4",
+  "httpx>=0.27,<1",
+  "snowflake-connector-python>=3.12,<4",
+]
 
 [tool.ruff]
+line-length = 100
 target-version = "py311"
-line-length = 140
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
-ignore = ["E501"]  # Existing code uses long lines for audit log strings
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
 
 [tool.bandit]
-exclude_dirs = ["tests"]
+exclude_dirs = ["tests", ".venv", ".git", "__pycache__"]
 skips = ["B101"]
 
 [tool.pytest.ini_options]
+addopts = "--import-mode=importlib -q --cov=skills --cov-report=term-missing --cov-report=xml --cov-fail-under=35"
 testpaths = ["skills"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-# importlib mode lets multiple skills share basenames like `test_ingest.py`
-# without the prepend-sys-path import collision that the default mode causes
-# when `pytest skills/` is run from the repo root. Each matrix cell in CI
-# still runs per-skill, but local top-level `pytest` now Just Works.
-addopts = "--import-mode=importlib"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["skills"]
+ignore_missing_imports = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+exclude = "(^|/)(tests|infra)/"

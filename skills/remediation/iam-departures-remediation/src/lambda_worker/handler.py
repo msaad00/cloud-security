@@ -44,6 +44,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -55,6 +56,7 @@ logger.setLevel(logging.INFO)
 CROSS_ACCOUNT_ROLE = os.environ.get("IAM_CROSS_ACCOUNT_ROLE", "iam-remediation-role")
 AUDIT_TABLE = os.environ.get("IAM_AUDIT_DYNAMODB_TABLE", "iam-remediation-audit")
 AUDIT_BUCKET = os.environ.get("IAM_REMEDIATION_BUCKET", "")
+ACCOUNT_ID_RE = re.compile(r"^\d{12}$")
 
 
 def handler(event: dict, context: Any) -> dict:
@@ -84,9 +86,27 @@ def handler(event: dict, context: Any) -> dict:
         }
     """
     entry = event.get("entry", event)
-    account_id = entry["recipient_account_id"]
-    iam_username = entry["iam_username"]
-    email = entry["email"]
+    if not isinstance(entry, dict):
+        entry = {}
+
+    try:
+        account_id = _require_non_empty_str(entry, "recipient_account_id")
+        iam_username = _require_non_empty_str(entry, "iam_username")
+        email = _require_non_empty_str(entry, "email")
+        if not ACCOUNT_ID_RE.fullmatch(account_id):
+            raise ValueError("recipient_account_id must be a 12-digit AWS account ID")
+    except ValueError as exc:
+        logger.warning("Invalid remediation payload: %s", exc)
+        audit_record = _build_audit_record(entry, [], "error", error="Invalid remediation payload")
+        _write_audit(audit_record)
+        return {
+            "email": entry.get("email", ""),
+            "iam_username": entry.get("iam_username", ""),
+            "account_id": entry.get("recipient_account_id", ""),
+            "status": "error",
+            "actions_taken": [],
+            "error": "Invalid remediation payload",
+        }
 
     logger.info(
         "Remediating IAM user: %s in account %s (employee: %s)",
@@ -463,6 +483,9 @@ def _write_audit(record: dict) -> None:
 
 def _get_iam_client(account_id: str) -> Any:
     """Assume cross-account role for IAM operations."""
+    if not ACCOUNT_ID_RE.fullmatch(account_id):
+        raise ValueError("Invalid AWS account ID")
+
     sts = boto3.client("sts")
     role_arn = f"arn:aws:iam::{account_id}:role/{CROSS_ACCOUNT_ROLE}"
 
@@ -482,3 +505,10 @@ def _get_iam_client(account_id: str) -> Any:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _require_non_empty_str(entry: dict[str, Any], field: str) -> str:
+    value = entry.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"Missing required field: {field}")
+    return value.strip()

@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install bandit
-      - run: bandit -r skills/ -c pyproject.toml --severity-level medium || true
+      - run: bandit -r skills/ -c pyproject.toml --severity-level medium
       - name: Check for hardcoded secrets
         run: |
           ! grep -rn "AKIA[A-Z0-9]\{16\}" skills/*/*/src/ --include="*.py" || exit 1

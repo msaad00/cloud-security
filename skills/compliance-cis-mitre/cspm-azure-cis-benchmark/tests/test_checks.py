@@ -7,20 +7,24 @@ it does not appear here.
 
 from __future__ import annotations
 
-import os
+import importlib.util
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+_SRC = Path(__file__).resolve().parent.parent / "src" / "checks.py"
+_SPEC = importlib.util.spec_from_file_location("cspm_azure_checks", _SRC)
+assert _SPEC and _SPEC.loader
+_CHECKS = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = _CHECKS
+_SPEC.loader.exec_module(_CHECKS)
 
-from checks import (
-    check_2_2_https_only,
-    check_2_3_no_public_blob,
-    check_2_4_network_rules,
-    check_4_1_no_unrestricted_ssh,
-    check_4_2_no_unrestricted_rdp,
-    check_4_3_nsg_flow_logs,
-)
+check_2_2_https_only = _CHECKS.check_2_2_https_only
+check_2_3_no_public_blob = _CHECKS.check_2_3_no_public_blob
+check_2_4_network_rules = _CHECKS.check_2_4_network_rules
+check_4_1_no_unrestricted_ssh = _CHECKS.check_4_1_no_unrestricted_ssh
+check_4_2_no_unrestricted_rdp = _CHECKS.check_4_2_no_unrestricted_rdp
+check_4_3_nsg_flow_logs = _CHECKS.check_4_3_nsg_flow_logs
 
 SUB_ID = "00000000-0000-0000-0000-000000000000"
 

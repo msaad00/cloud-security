@@ -5,13 +5,22 @@ Uses unittest.mock to simulate GCP SDK responses.
 
 from __future__ import annotations
 
-import os
+import importlib.util
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+_SRC = Path(__file__).resolve().parent.parent / "src" / "checks.py"
+_SPEC = importlib.util.spec_from_file_location("cspm_gcp_checks", _SRC)
+assert _SPEC and _SPEC.loader
+_CHECKS = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = _CHECKS
+_SPEC.loader.exec_module(_CHECKS)
 
-from checks import check_1_1_no_gmail_accounts, check_1_3_no_sa_keys, check_2_3_no_public_buckets
+check_1_1_no_gmail_accounts = _CHECKS.check_1_1_no_gmail_accounts
+check_1_3_no_sa_keys = _CHECKS.check_1_3_no_sa_keys
+check_2_3_no_public_buckets = _CHECKS.check_2_3_no_public_buckets
+check_4_2_no_unrestricted_ssh_rdp = _CHECKS.check_4_2_no_unrestricted_ssh_rdp
 
 
 class TestIAMChecks:
@@ -90,6 +99,25 @@ class TestStorageChecks:
 
         f = check_2_3_no_public_buckets(mock_storage, "test-project")
         assert f.status == "PASS"
+
+
+class TestNetworkingChecks:
+    def test_4_2_open_ssh_rule_fails(self):
+        mock_compute = MagicMock()
+        rule = MagicMock()
+        rule.name = "allow-ssh"
+        rule.direction = "INGRESS"
+        rule.disabled = False
+        allowed = MagicMock()
+        allowed.ip_protocol = "tcp"
+        allowed.ports = ["22"]
+        rule.allowed = [allowed]
+        rule.source_ranges = ["0.0.0.0/0"]
+        mock_compute.list.return_value = [rule]
+
+        f = check_4_2_no_unrestricted_ssh_rdp(mock_compute, "test-project")
+        assert f.status == "FAIL"
+        assert "allow-ssh: tcp/22" in f.resources
 
 
 class TestFindingStructure:

@@ -6,6 +6,8 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from lambda_worker.handler import (
@@ -198,3 +200,24 @@ class TestWorkerHandler:
         assert result["status"] == "error"
         assert "AssumeRole denied" in result["error"]
         mock_audit.assert_called_once()  # Audit still written on failure
+
+    @patch("lambda_worker.handler._write_audit")
+    def test_invalid_payload_rejected_before_remediation(self, mock_audit):
+        result = handler(_make_event(account_id="not-an-account"), None)
+
+        assert result["status"] == "error"
+        assert result["error"] == "Invalid remediation payload"
+        mock_audit.assert_called_once()
+
+
+class TestSnowflakeIdentifierSafety:
+    def test_embedded_quotes_are_escaped(self):
+        from lambda_worker.clouds.snowflake_user import _quote_identifier
+
+        assert _quote_identifier('jane"ops') == '"jane""ops"'
+
+    def test_newlines_are_rejected(self):
+        from lambda_worker.clouds.snowflake_user import _quote_identifier
+
+        with pytest.raises(ValueError, match="Invalid Snowflake identifier"):
+            _quote_identifier("bad\nuser")

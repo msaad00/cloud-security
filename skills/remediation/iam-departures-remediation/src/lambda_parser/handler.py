@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -35,6 +36,7 @@ logger.setLevel(logging.INFO)
 # Configuration from environment
 GRACE_PERIOD_DAYS = int(os.environ.get("IAM_GRACE_PERIOD_DAYS", "7"))
 CROSS_ACCOUNT_ROLE = os.environ.get("IAM_CROSS_ACCOUNT_ROLE", "iam-remediation-role")
+ACCOUNT_ID_RE = re.compile(r"^\d{12}$")
 
 
 def handler(event: dict, context: Any) -> dict:
@@ -52,8 +54,26 @@ def handler(event: dict, context: Any) -> dict:
             "validation_summary": {...}
         }
     """
-    bucket = event["bucket"]
-    key = event["key"]
+    bucket = event.get("bucket")
+    key = event.get("key")
+
+    if not isinstance(bucket, str) or not bucket or not isinstance(key, str) or not key:
+        logger.error("Invalid parser event payload: missing bucket/key")
+        return {
+            "validated_entries": [],
+            "validation_summary": {
+                "manifest_key": key if isinstance(key, str) else "",
+                "total_entries": 0,
+                "validated_count": 0,
+                "skipped_count": 0,
+                "error_count": 1,
+                "skipped": [],
+                "errors": [{"error": "Invalid event payload: bucket and key are required"}],
+                "validated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "source_bucket": bucket if isinstance(bucket, str) else "",
+            "source_key": key if isinstance(key, str) else "",
+        }
 
     logger.info("Parsing manifest: s3://%s/%s", bucket, key)
 
@@ -138,6 +158,9 @@ def _validate_entry(entry: dict) -> dict:
         if not entry.get(field):
             return {"action": "skip", "reason": f"Missing required field: {field}", "entry": entry}
 
+    if not ACCOUNT_ID_RE.fullmatch(str(entry["recipient_account_id"])):
+        return {"action": "skip", "reason": "Invalid recipient_account_id format", "entry": entry}
+
     # Already deleted — skip
     if entry.get("iam_deleted"):
         return {"action": "skip", "reason": "IAM user already deleted", "entry": entry}
@@ -221,6 +244,9 @@ def _get_iam_client(account_id: str) -> Any:
     The role must exist in every target account and trust the
     Security OU management account.
     """
+    if not ACCOUNT_ID_RE.fullmatch(account_id):
+        raise ValueError("Invalid AWS account ID")
+
     sts = boto3.client("sts")
     role_arn = f"arn:aws:iam::{account_id}:role/{CROSS_ACCOUNT_ROLE}"
 
