@@ -117,7 +117,7 @@ The rule for this repo is simple: keep the architecture readable in Markdown, an
 | L6 | `convert-*` | **shipping** | ocsf-to-sarif, ocsf-to-mermaid-attack-flow | to-sigma, to-splunk-cim, to-jira, to-opa-rego |
 | L7 | `sinks/` | **planned** | none | PR T (snowflake), PR W (security-lake), PR AA (clickhouse), bigquery |
 | L8 | `query/` + packs | **planned** | none | PR T ships the first Cortex query pack alongside sink-snowflake |
-| L9 | `mcp-server/` | **planned** | none | PR U — the unlock for Cortex Code CLI integration |
+| L9 | `mcp-server/` | **shipping** | thin stdio wrapper | tighter input schemas, HTTP/SSE transport, remediation-safe wrappers |
 
 ## 4. Two execution modes
 
@@ -304,13 +304,13 @@ This section is the heart of the design. Without it, each agent (Claude Code, Co
                                             stdout JSONL out)
 ```
 
-### How `mcp-server/` works (PR U)
+### How `mcp-server/` works
 
-1. **Auto-discovery** — walks `skills/*/*/SKILL.md`, parses the frontmatter (`name`, `description`, `capability`), and derives the entrypoint (`src/<ingest|detect|checks|convert|...>.py`).
+1. **Auto-discovery** — walks `skills/*/*/SKILL.md`, parses the frontmatter (`name`, `description`), classifies the skill (`read-only` vs write-capable), and resolves a fixed entrypoint (`src/<ingest|detect|checks|convert|discover>.py`).
 2. **Tool spec generation** — each skill becomes one MCP tool. Tool name = `SKILL.md` `name` field. Tool description = the full frontmatter `description` (which already leads with "Use when…" and closes with "Do NOT use…" per the Anthropic pattern).
-3. **Input schema** — derived from the skill's `argparse` spec. Required JSONL input is modeled as a tool parameter `input: string` (inline JSONL) or `input_uri: string` (S3/GS/blob URL the server will fetch).
-4. **Invocation** — the server shells out to `python3 <skill-path>/src/<entry>.py`, streams the tool's `input` to the skill's stdin, captures stdout, wraps non-zero exits as MCP errors with stderr attached.
-5. **Transport** — stdio (local) and HTTP/SSE (remote). stdio is enough for Claude Code and Cortex Code CLI; HTTP/SSE is for hosted multi-agent deployments.
+3. **Input schema** — current implementation exposes a conservative `input: string` (stdin payload) and `args: string[]` (fixed CLI args passed to the skill entrypoint). This keeps the wrapper thin and avoids inventing a second API surface. Tighter CLI-derived schemas are a follow-up.
+4. **Invocation** — the server shells out to `python3 <skill-path>/src/<entry>.py`, streams the tool's `input` to the skill's stdin, captures stdout, and wraps non-zero exits as MCP tool errors with stderr attached.
+5. **Transport** — stdio (local) ships now. HTTP/SSE stays a follow-up for hosted deployments.
 
 ### Why MCP and not a bespoke API
 
