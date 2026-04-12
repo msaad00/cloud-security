@@ -30,7 +30,7 @@
       }
     },
     {
-      "Sid": "ValidateIAMUserExists",
+      "Sid": "ValidateIAMUserExists_WILDCARD_OK",
       "Effect": "Allow",
       "Action": [
         "iam:GetUser"

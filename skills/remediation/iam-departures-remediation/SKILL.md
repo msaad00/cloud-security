@@ -96,6 +96,7 @@ flowchart TD
 
 ## Security Guardrails
 
+- **Dry-run first**: use the parser and cross-cloud worker dry-run paths before any real execution. Planning, examples, and validation should never start with a destructive path.
 - **Deny policies**: Root, `break-glass-*`, and `emergency-*` accounts are protected by explicit IAM deny — the pipeline cannot touch them.
 - **Grace period**: 7-day default window before remediation (configurable). HR corrections within this window prevent accidental deletion.
 - **Rehire safety**: 8 scenarios handled. Active employees with same IAM are always skipped.

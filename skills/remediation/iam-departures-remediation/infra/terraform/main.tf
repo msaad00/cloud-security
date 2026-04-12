@@ -278,6 +278,7 @@ resource "aws_iam_role_policy" "parser" {
         }
       },
       {
+        # WILDCARD_OK: iam:GetUser does not support resource-level scoping.
         Sid      = "ValidateIAMUserExists"
         Effect   = "Allow"
         Action   = ["iam:GetUser"]
@@ -332,6 +333,7 @@ resource "aws_iam_role_policy" "worker" {
         }
       },
       {
+        # WILDCARD_OK: the user-remediation IAM APIs in this block do not support tighter resource scoping.
         Sid    = "IAMRemediationActions"
         Effect = "Allow"
         Action = [
@@ -424,6 +426,7 @@ resource "aws_iam_role_policy" "sfn" {
         Resource = [aws_lambda_function.parser.arn, aws_lambda_function.worker.arn]
       },
       {
+        # WILDCARD_OK: CloudWatch Logs delivery actions in Step Functions require Resource = "*".
         Sid    = "CloudWatchLogs"
         Effect = "Allow"
         Action = [
@@ -435,6 +438,7 @@ resource "aws_iam_role_policy" "sfn" {
         Resource = "*"
       },
       {
+        # WILDCARD_OK: X-Ray telemetry APIs require Resource = "*".
         Sid    = "XRayTracing"
         Effect = "Allow"
         Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords", "xray:GetSamplingRules", "xray:GetSamplingTargets"]
