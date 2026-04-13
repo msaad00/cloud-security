@@ -16,10 +16,12 @@ The format is loosely based on Keep a Changelog.
 - `scripts/validate_framework_coverage.py` so CI can reject undocumented or drifting coverage claims.
 - explicit cross-cloud ATT&CK identity coverage metadata for `detect-lateral-movement`, covering AWS role pivots, GCP service-account pivots, and Azure role / managed-identity pivot anchors.
 - explicit MITRE ATLAS and NIST AI RMF declarations for `gpu-cluster-security`, including machine-readable benchmark metadata for wrappers and coverage tests.
+- `docs/RUNTIME_ISOLATION.md` to document sandboxing, credential scope, transport protections, integrity controls, and approval rules across CLI, CI, MCP, and persistent/serverless runs.
 
 ### Changed
 - Promoted the IAM departures cross-cloud workflow visual in `README.md` and made the CI badge explicitly track the `main` branch.
 - Rebranded the public repo/docs surface to `cloud-ai-security-skills`, updated the MCP server name and project-scoped `.mcp.json`, and added a concise agent quick-start matrix for Claude Code, Codex, Cursor, Windsurf, and Cortex Code CLI.
+- Normalized emitted OCSF and SARIF product/vendor identity to `cloud-ai-security-skills` while explicitly keeping older repo-local bridge/profile identifiers stable for compatibility.
 
 ## 0.4.0 - 2026-04-13
 

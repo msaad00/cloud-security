@@ -21,8 +21,8 @@ compatibility: >-
   clickhouse-connect, or httpx (Workday API).
 metadata:
   author: msaad00
-  homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/remediation/iam-departures-remediation
+  homepage: https://github.com/msaad00/cloud-ai-security-skills
+  source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/remediation/iam-departures-remediation
   version: 0.2.0
   frameworks:
     - MITRE ATT&CK

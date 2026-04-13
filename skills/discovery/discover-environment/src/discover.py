@@ -800,8 +800,8 @@ def to_ocsf_cloud_resources_inventory(graph: EnvironmentGraph) -> dict[str, Any]
         "metadata": {
             "version": "1.8.0",
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": "discover-environment"},
             },
         },

@@ -106,8 +106,8 @@ def _base_event(raw: dict[str, Any], activity_id: int) -> dict[str, Any]:
             "version": OCSF_VERSION,
             "profiles": [MCP_PROFILE],
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "mcp", "ingest"],

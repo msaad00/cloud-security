@@ -207,15 +207,15 @@ def _build_result(finding: dict[str, Any]) -> dict[str, Any]:
 def _build_driver(detectors: set[str], rules: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Build the SARIF tool.driver object.
 
-    name: cloud-security-detection-engineering (the product family — all
+    name: cloud-ai-security-skills-detection-engineering (the product family — all
     detect-* skills emit findings that flow through this converter, so the
     Security tab groups them under one tool name)
     rules: deduplicated by MITRE technique uid
     """
     return {
-        "name": "cloud-security-detection-engineering",
+        "name": "cloud-ai-security-skills-detection-engineering",
         "version": SKILL_VERSION,
-        "informationUri": "https://github.com/msaad00/cloud-security",
+        "informationUri": "https://github.com/msaad00/cloud-ai-security-skills",
         "rules": list(rules.values()),
         "properties": {
             "detectors": sorted(detectors),

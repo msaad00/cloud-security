@@ -18,8 +18,8 @@ compatibility: >-
   CycloneDX-aligned JSON BOM. Never calls cloud write APIs.
 metadata:
   author: msaad00
-  homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/discovery/discover-ai-bom
+  homepage: https://github.com/msaad00/cloud-ai-security-skills
+  source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/discovery/discover-ai-bom
   version: 0.1.0
   frameworks:
     - CycloneDX ML-BOM

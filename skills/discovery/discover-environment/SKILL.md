@@ -21,8 +21,8 @@ compatibility: >-
   Read-only — uses only viewer/audit permissions. No write access.
 metadata:
   author: msaad00
-  homepage: https://github.com/msaad00/cloud-security
-  source: https://github.com/msaad00/cloud-security/tree/main/skills/discovery/discover-environment
+  homepage: https://github.com/msaad00/cloud-ai-security-skills
+  source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/discovery/discover-environment
   version: 0.1.0
   frameworks:
     - MITRE ATT&CK

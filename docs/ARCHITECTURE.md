@@ -5,6 +5,7 @@ This document is the load-bearing design contract for `cloud-ai-security-skills`
 - **Wire format contract** — see [`../skills/detection-engineering/OCSF_CONTRACT.md`](../skills/detection-engineering/OCSF_CONTRACT.md)
 - **Sink / persistence contract** — see [`./SINK_CONTRACT.md`](./SINK_CONTRACT.md) *(lands with PR T)*
 - **Runner / streaming contract** — see [`./RUNNER_CONTRACT.md`](./RUNNER_CONTRACT.md) *(lands with PR V)*
+- **Runtime isolation and trust boundaries** — see [`./RUNTIME_ISOLATION.md`](./RUNTIME_ISOLATION.md)
 - **Visual guide** — see [`./DIAGRAMS.md`](./DIAGRAMS.md) for the architecture and data-flow diagrams in both markdown-native and SVG-friendly form
 
 ## 1. Purpose and scope

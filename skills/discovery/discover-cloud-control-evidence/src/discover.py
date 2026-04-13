@@ -942,8 +942,8 @@ def to_ocsf_live_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         "metadata": {
             "version": "1.8.0",
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "profiles": ["cloud", "security_control"],
