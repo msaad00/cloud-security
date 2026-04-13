@@ -81,7 +81,7 @@ Priority providers and surfaces:
 - GCP: IAM, VPC, GKE, SCC, Vertex AI
 - Azure: Entra, NSG, Defender, AKS, Azure ML, AI Foundry
 - identity vendors: Okta, Entra ID / Graph, Google Workspace, SCIM-capable SaaS audit sources
-- current identity-vendor ingesters: Okta System Log and Entra / Graph directoryAudit
+- current identity-vendor ingesters: Okta System Log, Entra / Graph directoryAudit, and Google Workspace login audit
 - shared asset classes:
   - identities
   - compute

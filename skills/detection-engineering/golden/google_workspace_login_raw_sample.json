@@ -1,0 +1,80 @@
+{
+  "items": [
+    {
+      "kind": "audit#activity",
+      "id": {
+        "time": "2026-04-13T06:00:00.000Z",
+        "uniqueQualifier": "workspace-login-1",
+        "applicationName": "login",
+        "customerId": "C03az79cb"
+      },
+      "actor": {
+        "callerType": "USER",
+        "email": "alice@example.com",
+        "profileId": "117200475532672775229"
+      },
+      "ownerDomain": "example.com",
+      "ipAddress": "198.51.100.21",
+      "events": [
+        {
+          "type": "login",
+          "name": "login_success",
+          "parameters": [
+            { "name": "login_type", "value": "google_password" },
+            { "name": "is_suspicious", "boolValue": true },
+            { "name": "login_challenge_method", "value": "backup_code" }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "audit#activity",
+      "id": {
+        "time": "2026-04-13T06:02:00.000Z",
+        "uniqueQualifier": "workspace-login-2",
+        "applicationName": "login",
+        "customerId": "C03az79cb"
+      },
+      "actor": {
+        "callerType": "USER",
+        "email": "bob@example.com",
+        "profileId": "117200475532672775230"
+      },
+      "ownerDomain": "example.com",
+      "ipAddress": "198.51.100.22",
+      "events": [
+        {
+          "type": "login",
+          "name": "login_failure",
+          "parameters": [
+            { "name": "login_failure_type", "value": "login_failure_invalid_password" },
+            { "name": "login_type", "value": "google_password" }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "audit#activity",
+      "id": {
+        "time": "2026-04-13T06:05:00.000Z",
+        "uniqueQualifier": "workspace-login-3",
+        "applicationName": "login",
+        "customerId": "C03az79cb"
+      },
+      "actor": {
+        "callerType": "USER",
+        "email": "carol@example.com",
+        "profileId": "117200475532672775231"
+      },
+      "ownerDomain": "example.com",
+      "ipAddress": "198.51.100.23",
+      "events": [
+        {
+          "type": "2sv_change",
+          "name": "2sv_enroll",
+          "parameters": []
+        }
+      ]
+    }
+  ]
+}

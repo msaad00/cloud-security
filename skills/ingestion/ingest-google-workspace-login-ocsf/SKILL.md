@@ -1,0 +1,149 @@
+---
+name: ingest-google-workspace-login-ocsf
+description: >-
+  Convert verified Google Workspace Admin SDK Reports API login audit events
+  into OCSF 1.8 Identity & Access Management events. The first slice maps
+  Google Workspace login success, login failure, logout, and 2-step
+  verification enrollment-change events into Authentication (3002) and Account
+  Change (3001) while preserving natural IDs such as id.time,
+  id.uniqueQualifier, actor.profileId, and event parameters for SIEM-friendly
+  dedupe and downstream correlation. Use when the user mentions Google
+  Workspace login audit ingestion, Admin SDK Reports normalization, or feeding
+  Workspace identity telemetry into an OCSF pipeline. Do NOT use for raw Google
+  Cloud Audit Logs, Okta System Log, or as a detector or policy engine — this
+  skill only normalizes verified Workspace login audit payloads.
+license: Apache-2.0
+compatibility: >-
+  Requires Python 3.11+. No Google SDK required when Admin SDK Reports payloads
+  are already exported. Read-only — validates raw Workspace audit shape and
+  emits OCSF JSONL only. Never calls write APIs.
+metadata:
+  author: msaad00
+  homepage: https://github.com/msaad00/cloud-ai-security-skills
+  source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/ingestion/ingest-google-workspace-login-ocsf
+  version: 0.1.0
+  frameworks:
+    - OCSF 1.8
+  cloud: google-workspace
+  capability: read-only
+---
+
+# ingest-google-workspace-login-ocsf
+
+Convert verified Google Workspace Admin SDK Reports login audit payloads into
+OCSF 1.8 IAM records with deterministic IDs and source-preserving parameters.
+
+## Use when
+
+- You have Admin SDK Reports `activities.list` exports for `applicationName=login` and need OCSF output
+- You want to normalize Google Workspace login and 2-step-verification telemetry for SIEM, lake, MCP, or downstream detection use
+- You need a portable identity event stream that preserves Workspace `id.time`, `id.uniqueQualifier`, actor IDs, and raw login parameters
+- You want Workspace identity events represented as OCSF before feeding them into cross-vendor detections or evidence flows
+
+## Do NOT use
+
+- On Google Cloud Audit Logs, Cloud Identity logs, or raw Entra / Okta payloads
+- To collect live Workspace audit data by itself — upstream collection and auth stay outside this skill
+- To infer ATT&CK techniques or create findings directly
+- To mutate Workspace users, sessions, or 2-step settings
+
+## Input contract
+
+Accepts one of three raw Admin SDK Reports login audit shapes:
+
+1. **Activities list response**
+
+```json
+{
+  "items": [
+    {
+      "id": {
+        "time": "2026-04-13T06:00:00.000Z",
+        "uniqueQualifier": "workspace-1",
+        "applicationName": "login"
+      },
+      "events": [
+        {
+          "type": "login",
+          "name": "login_success"
+        }
+      ]
+    }
+  ]
+}
+```
+
+2. **Single activity**
+
+```json
+{
+  "id": {
+    "time": "2026-04-13T06:00:00.000Z",
+    "uniqueQualifier": "workspace-1",
+    "applicationName": "login"
+  },
+  "events": [
+    {
+      "type": "login",
+      "name": "login_success"
+    }
+  ]
+}
+```
+
+3. **JSONL stream of activities**
+
+```json
+{"id":{"time":"2026-04-13T06:00:00.000Z","uniqueQualifier":"workspace-1","applicationName":"login"},"events":[{"type":"login","name":"login_success"}]}
+```
+
+The first slice intentionally supports a narrow, verified event family from the
+Workspace login audit appendix:
+
+- `login_success`
+- `login_failure`
+- `logout`
+- `2sv_enroll`
+- `2sv_disable`
+
+Unsupported event names are skipped with a warning to `stderr`.
+
+## Output contract
+
+Emits OCSF 1.8 JSONL with verified class mappings:
+
+- **Authentication (3002)** for `login_success`, `login_failure`, and `logout`
+- **Account Change (3001)** for `2sv_enroll` and `2sv_disable`
+
+Each output record includes:
+
+- deterministic `metadata.uid` based on `applicationName`, `time`, `uniqueQualifier`, and event name
+- UTC epoch-millisecond `time` from `id.time`
+- Workspace actor and profile IDs preserved under `actor` and `session`
+- raw event parameters preserved under `unmapped.google_workspace_login`
+
+## Usage
+
+```bash
+# activities.list export
+python src/ingest.py workspace-login.json > workspace-login.ocsf.jsonl
+
+# JSONL stream from stdin
+cat workspace-login.jsonl | python src/ingest.py > workspace-login.ocsf.jsonl
+
+# explicit output file
+python src/ingest.py workspace-login.json --output workspace-login.ocsf.jsonl
+```
+
+## Security guardrails
+
+- Read-only only. No Google Workspace writes. No subprocesses.
+- Keeps Workspace natural IDs for dedupe and correlation instead of inventing random IDs.
+- Uses verified raw fields from official Google Workspace docs only; unsupported event names are skipped rather than guessed.
+- Normalizes into OCSF only where the class fit is explicit. Unmapped vendor-specific detail stays under `unmapped`.
+
+## See also
+
+- [`../OCSF_CONTRACT.md`](../OCSF_CONTRACT.md) — shared OCSF wire contract and version pinning
+- [`../ingest-gcp-audit-ocsf/SKILL.md`](../ingest-gcp-audit-ocsf/SKILL.md) — Google Cloud API audit equivalent
+- [`../ingest-okta-system-log-ocsf/SKILL.md`](../ingest-okta-system-log-ocsf/SKILL.md) — external identity-vendor ingestion peer

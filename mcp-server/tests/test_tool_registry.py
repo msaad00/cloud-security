@@ -22,11 +22,12 @@ tool_map = MODULE.tool_map
 class TestDiscovery:
     def test_discovers_all_skills(self):
         skills = discover_skills(REPO_ROOT)
-        assert len(skills) >= 33
+        assert len(skills) >= 34
         assert {skill.name for skill in skills} >= {
             "ingest-cloudtrail-ocsf",
             "ingest-entra-directory-audit-ocsf",
             "ingest-okta-system-log-ocsf",
+            "ingest-google-workspace-login-ocsf",
             "detect-lateral-movement",
             "detect-okta-mfa-fatigue",
             "cspm-aws-cis-benchmark",
@@ -50,6 +51,7 @@ class TestDiscovery:
         assert "ingest-cloudtrail-ocsf" in tools
         assert "ingest-entra-directory-audit-ocsf" in tools
         assert "ingest-okta-system-log-ocsf" in tools
+        assert "ingest-google-workspace-login-ocsf" in tools
         assert "detect-lateral-movement" in tools
         assert "detect-okta-mfa-fatigue" in tools
         assert "model-serving-security" in tools

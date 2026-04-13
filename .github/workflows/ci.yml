@@ -139,6 +139,7 @@ jobs:
             skills/ingestion/ingest-azure-activity-ocsf \
             skills/ingestion/ingest-entra-directory-audit-ocsf \
             skills/ingestion/ingest-okta-system-log-ocsf \
+            skills/ingestion/ingest-google-workspace-login-ocsf \
             skills/ingestion/ingest-k8s-audit-ocsf \
             skills/ingestion/ingest-mcp-proxy-ocsf \
             skills/detection/detect-mcp-tool-drift \
