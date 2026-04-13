@@ -93,8 +93,8 @@ cat merged.ocsf.jsonl \
 ## What does NOT fire
 
 - identity pivot with no subsequent internal traffic → not fired
-- Internal traffic with no preceding `AssumeRole` → not fired (covered by other detectors)
-- `AssumeRole` followed by egress traffic (public internet dst) → not fired (data exfil detector, roadmap)
+- Internal traffic with no preceding identity-pivot anchor (`AssumeRole*`, service-account impersonation, or Azure access-elevation event) → not fired
+- Identity-pivot anchor followed by egress traffic (public internet dst) → not fired (data exfil detector, roadmap)
 - identity pivots with no valid `cloud.provider` or account context → not fired
 - Small flows under 1024 bytes → filtered (scan / handshake noise)
 - `REJECT` flows → not fired (failed connection attempts don't count as movement)

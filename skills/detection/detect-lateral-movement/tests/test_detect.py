@@ -277,6 +277,8 @@ class TestCrossCloudAnchors:
         findings = list(detect([anchor, flow]))
         assert len(findings) == 1
         assert findings[0]["observables"][0]["value"] == "GCP"
+        assert findings[0]["finding_info"]["title"].startswith("GCP lateral movement")
+        assert "canonical GCP lateral movement pattern" in findings[0]["finding_info"]["desc"]
 
     def test_azure_identity_pivot_fires(self):
         anchor = _anchor_event(
@@ -294,6 +296,8 @@ class TestCrossCloudAnchors:
         findings = list(detect([anchor, flow]))
         assert len(findings) == 1
         assert findings[0]["observables"][0]["value"] == "Azure"
+        assert findings[0]["finding_info"]["title"].startswith("Azure lateral movement")
+        assert "canonical Azure lateral movement pattern" in findings[0]["finding_info"]["desc"]
 
     def test_provider_mismatch_does_not_fire(self):
         anchor = _anchor_event(provider="AWS", session_uid="aws-session-1")

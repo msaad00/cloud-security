@@ -256,3 +256,17 @@ class TestSourceFactory:
     )
     def test_clickhouse_source_creation(self):
         assert get_source("clickhouse").__class__.__name__ == "ClickHouseSource"
+
+
+class TestSnowflakeLogging:
+    def test_snowflake_source_suppresses_verbose_connector_logs(self):
+        from reconciler import sources
+
+        with patch("reconciler.sources.logging.getLogger") as mock_get_logger:
+            connector_logger = MagicMock()
+            mock_get_logger.return_value = connector_logger
+
+            sources._configure_snowflake_logging()
+
+        mock_get_logger.assert_called_once_with("snowflake.connector")
+        connector_logger.setLevel.assert_called_once_with(sources.logging.WARNING)
