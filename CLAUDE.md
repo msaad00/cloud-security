@@ -32,6 +32,7 @@ skills/
 ├── discovery/                     # inventory / graph / AI BOM
 │   ├── discover-environment/
 │   └── discover-ai-bom/
+│   └── discover-control-evidence/
 │
 ├── detection/                     # OCSF → Detection Finding 2004 + MITRE
 │   ├── detect-mcp-tool-drift/

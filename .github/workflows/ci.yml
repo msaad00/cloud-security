@@ -168,6 +168,7 @@ jobs:
           for skill_dir in \
             skills/discovery/discover-environment \
             skills/discovery/discover-ai-bom \
+            skills/discovery/discover-control-evidence \
             skills/evaluation/model-serving-security \
             skills/evaluation/gpu-cluster-security
           do

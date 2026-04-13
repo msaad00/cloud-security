@@ -27,6 +27,7 @@ Skills are organised into layered categories. See [`skills/README.md`](skills/RE
 **`discovery/`** (point-in-time inventory / graph / BOM)
 - `discover-environment`
 - `discover-ai-bom`
+- `discover-control-evidence`
 
 **`detection/`** (OCSF → OCSF Detection Finding 2004 + MITRE)
 - `detect-mcp-tool-drift`
