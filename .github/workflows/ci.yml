@@ -81,14 +81,20 @@ jobs:
             boto3 moto pytest pytest-cov
             google-cloud-compute google-cloud-iam google-cloud-resource-manager google-cloud-storage
             azure-identity azure-mgmt-network azure-mgmt-resource azure-mgmt-storage
-      - run: >
-          pytest
-          skills/evaluation/cspm-aws-cis-benchmark/tests/
-          skills/evaluation/cspm-gcp-cis-benchmark/tests/
-          skills/evaluation/cspm-azure-cis-benchmark/tests/
-          skills/evaluation/k8s-security-benchmark/tests/
-          skills/evaluation/container-security/tests/
-          -v
+      - name: Run compliance skill suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for skill in \
+            cspm-aws-cis-benchmark \
+            cspm-gcp-cis-benchmark \
+            cspm-azure-cis-benchmark \
+            k8s-security-benchmark \
+            container-security
+          do
+            echo "==> skills/evaluation/${skill}"
+            pytest "skills/evaluation/${skill}/tests/" -v -o "testpaths=tests"
+          done
 
   test-remediation:
     runs-on: ubuntu-latest
@@ -103,7 +109,7 @@ jobs:
             google-cloud-iam google-cloud-resource-manager google-api-python-client
             azure-identity
             clickhouse-connect databricks-sql-connector httpx snowflake-connector-python
-      - run: pytest skills/remediation/iam-departures-remediation/tests/ -v
+      - run: pytest skills/remediation/iam-departures-remediation/tests/ -v -o "testpaths=tests"
 
   test-detection-engineering:
     runs-on: ubuntu-latest
@@ -114,12 +120,33 @@ jobs:
         with:
           python-version: "3.11"
           packages: pytest pytest-cov
-      - run: >
-          pytest
-          skills/ingestion/
-          skills/detection/
-          skills/view/
-          -v
+      - name: Run ingestion, detection, and view suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for skill_dir in \
+            skills/ingestion/ingest-cloudtrail-ocsf \
+            skills/ingestion/ingest-vpc-flow-logs-ocsf \
+            skills/ingestion/ingest-vpc-flow-logs-gcp-ocsf \
+            skills/ingestion/ingest-nsg-flow-logs-azure-ocsf \
+            skills/ingestion/ingest-guardduty-ocsf \
+            skills/ingestion/ingest-security-hub-ocsf \
+            skills/ingestion/ingest-gcp-scc-ocsf \
+            skills/ingestion/ingest-azure-defender-for-cloud-ocsf \
+            skills/ingestion/ingest-gcp-audit-ocsf \
+            skills/ingestion/ingest-azure-activity-ocsf \
+            skills/ingestion/ingest-k8s-audit-ocsf \
+            skills/ingestion/ingest-mcp-proxy-ocsf \
+            skills/detection/detect-mcp-tool-drift \
+            skills/detection/detect-privilege-escalation-k8s \
+            skills/detection/detect-sensitive-secret-read-k8s \
+            skills/detection/detect-lateral-movement \
+            skills/view/convert-ocsf-to-sarif \
+            skills/view/convert-ocsf-to-mermaid-attack-flow
+          do
+            echo "==> ${skill_dir}"
+            pytest "${skill_dir}/tests/" -v -o "testpaths=tests"
+          done
 
   test-ai-infra-security:
     runs-on: ubuntu-latest
@@ -134,12 +161,18 @@ jobs:
             boto3 pytest pytest-cov
             google-cloud-compute google-cloud-iam google-cloud-resource-manager google-cloud-storage
             azure-identity azure-mgmt-resource
-      - run: >
-          pytest
-          skills/evaluation/model-serving-security/tests/
-          skills/evaluation/gpu-cluster-security/tests/
-          skills/evaluation/discover-environment/tests/
-          -v
+      - name: Run AI infra skill suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          for skill in \
+            model-serving-security \
+            gpu-cluster-security \
+            discover-environment
+          do
+            echo "==> skills/evaluation/${skill}"
+            pytest "skills/evaluation/${skill}/tests/" -v -o "testpaths=tests"
+          done
 
   test-integration:
     runs-on: ubuntu-latest
