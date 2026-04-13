@@ -113,11 +113,19 @@ class TestMcpServer:
                         "endpoints": [
                             {
                                 "name": "inference",
-                                "auth": {"type": "oauth2", "enabled": True, "roles": ["admin", "user"]},
+                                "auth": {
+                                    "type": "oauth2",
+                                    "enabled": True,
+                                    "roles": ["admin", "user"],
+                                    "identity": "svc-model-serving",
+                                },
                                 "rate_limit": {"enabled": True, "rpm": 100},
                                 "limits": {"max_tokens": 4096},
                                 "url": "https://model.internal:8443",
                                 "visibility": "private",
+                                "network": {"vpc": True, "private_endpoint": True},
+                                "guardrails": {"enabled": True},
+                                "logging": {"enabled": True},
                             }
                         ],
                         "containers": [
