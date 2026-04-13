@@ -66,6 +66,7 @@ ATLAS is present today, but coverage is narrower than ATT&CK.
 | `discover-environment` | graph overlay for AI/ML resources and adversarial ML techniques |
 | `model-serving-security` | explicit ATLAS coverage in skill docs and checks |
 | `discover-ai-bom` | inventory artifact for future ATLAS / AI RMF evidence joins |
+| `discover-control-evidence` | evidence package that preserves ATLAS / AI RMF context from discovery artifacts |
 
 Recommended expansion:
 - make ATLAS mappings more explicit in `gpu-cluster-security`
@@ -92,6 +93,7 @@ uniform than classic cloud posture.
 | Skill | Frameworks called out today |
 |---|---|
 | `discover-ai-bom` | CycloneDX ML-BOM, NIST AI RMF, MITRE ATLAS, PCI, SOC 2 |
+| `discover-control-evidence` | PCI DSS 4.0, SOC 2 TSC, CycloneDX ML-BOM, MITRE ATLAS |
 | `model-serving-security` | MITRE ATLAS, NIST CSF, OWASP LLM Top 10, SOC 2 |
 | `gpu-cluster-security` | MITRE ATT&CK, NIST CSF, CIS Controls, CIS Kubernetes |
 | `discover-environment` | MITRE ATT&CK, MITRE ATLAS, NIST CSF |
@@ -122,6 +124,7 @@ AI BOM is **not** the identity of the repo, but it is now a shipped discovery ca
 Current fit:
 - **collection / inventory input** in `discovery/`
 - **normalization** into a deterministic CycloneDX-aligned AI BOM artifact
+- **technical evidence output** via discovery-layer evidence packaging for PCI and SOC 2 reviews
 - **future evaluation joins** against ATLAS, NIST AI RMF, OWASP LLM Top 10, PCI, and SOC 2 evidence pipelines
 
 That keeps AI BOM as one important capability inside a broader cloud + AI security skills repo.

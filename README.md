@@ -95,6 +95,7 @@ skills/
 ├── discovery/                      "Point-in-time inventory and graph evidence"
 │   ├── discover-environment                      → MITRE ATT&CK + ATLAS graph overlay
 │   └── discover-ai-bom                           → CycloneDX-aligned AI BOM
+│   └── discover-control-evidence                 → PCI / SOC 2 technical evidence JSON
 │
 ├── detection/                      "What attack pattern does this event stream show?"
 │   ├── detect-lateral-movement                    → T1021 / T1078.004 cross-cloud pivot
@@ -119,7 +120,7 @@ skills/
     └── iam-departures-remediation  (event-driven, DLQ + SNS, dual audit)
 ```
 
-**Roadmap:** current open issues focus on AWS Config and deeper evaluation coverage, richer MCP input schemas and transports, additional cloud and AI service coverage, vendor stories, and deeper discovery / inventory follow-ons beyond the first AI BOM capability.
+**Roadmap:** current open issues focus on AWS Config and deeper evaluation coverage, richer MCP input schemas and transports, additional cloud and AI service coverage, vendor stories, and deeper discovery / inventory follow-ons beyond the first AI BOM and evidence capabilities.
 
 </details>
 
