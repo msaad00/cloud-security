@@ -58,6 +58,7 @@ class TestMcpServer:
             assert "ingest-cloudtrail-ocsf" in names
             assert "ingest-entra-directory-audit-ocsf" in names
             assert "ingest-okta-system-log-ocsf" in names
+            assert "ingest-google-workspace-login-ocsf" in names
             assert "detect-lateral-movement" in names
             assert "detect-okta-mfa-fatigue" in names
             assert "model-serving-security" in names

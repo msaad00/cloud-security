@@ -134,6 +134,7 @@ skills/
 │   ├── ingest-gcp-audit-ocsf       GCP            → API Activity 6003
 │   ├── ingest-azure-activity-ocsf  Azure          → API Activity 6003
 │   ├── ingest-okta-system-log-ocsf Okta           → IAM 3002 / 3001 / 3005
+│   ├── ingest-google-workspace-login-ocsf Workspace → IAM 3002 / 3001
 │   ├── ingest-k8s-audit-ocsf       K8s            → API Activity 6003
 │   └── ingest-mcp-proxy-ocsf       MCP            → Application Activity 6002
 │

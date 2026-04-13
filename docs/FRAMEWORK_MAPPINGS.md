@@ -70,6 +70,7 @@ Identity ingestion is broader than cloud control planes now.
 | Skill | OCSF scope |
 |---|---|
 | `ingest-entra-directory-audit-ocsf` | API Activity (6003) for verified Microsoft Entra / Graph `directoryAudit` identity-management events |
+| `ingest-google-workspace-login-ocsf` | Authentication (3002) and Account Change (3001) for verified Google Workspace Admin SDK Reports login-audit events |
 | `ingest-okta-system-log-ocsf` | Authentication (3002), Account Change (3001), User Access Management (3005) from verified Okta System Log fields, including Okta Verify push and deny event families |
 | `ingest-cloudtrail-ocsf` | API Activity (6003) for AWS IAM and control-plane events |
 | `ingest-gcp-audit-ocsf` | API Activity (6003) for GCP audit events |
@@ -79,6 +80,7 @@ The rule stays the same across vendors:
 - verify the real source payload and natural IDs first
 - normalize to the narrowest OCSF class that fits cleanly
 - keep provider-specific context under `unmapped` instead of losing it
+- keep source-specific event families separate instead of pretending Okta, Entra, and Workspace login telemetry are interchangeable
 
 ## MITRE ATLAS
 
