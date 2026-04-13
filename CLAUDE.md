@@ -29,21 +29,24 @@ skills/
 │   ├── ingest-k8s-audit-ocsf/
 │   └── ingest-mcp-proxy-ocsf/
 │
+├── discovery/                     # inventory / graph / AI BOM
+│   ├── discover-environment/
+│   └── discover-ai-bom/
+│
 ├── detection/                     # OCSF → Detection Finding 2004 + MITRE
 │   ├── detect-mcp-tool-drift/
 │   ├── detect-privilege-escalation-k8s/
 │   ├── detect-sensitive-secret-read-k8s/
 │   └── detect-lateral-movement/
 │
-├── evaluation/                    # posture, benchmark, and inventory checks
+├── evaluation/                    # posture and benchmark checks
 │   ├── cspm-aws-cis-benchmark/
 │   ├── cspm-gcp-cis-benchmark/
 │   ├── cspm-azure-cis-benchmark/
 │   ├── k8s-security-benchmark/
 │   ├── container-security/
 │   ├── model-serving-security/
-│   ├── gpu-cluster-security/
-│   └── discover-environment/
+│   └── gpu-cluster-security/
 │
 ├── view/                          # OCSF → rendered/review formats
 │   ├── convert-ocsf-to-sarif/
@@ -69,7 +72,7 @@ Every skill in every category is a closed loop: **detect → act → audit → r
 | `skills/<layer>/<skill>/SKILL.md` | exact skill behavior and non-goals |
 | `skills/<layer>/<skill>/REFERENCES.md` | official APIs, schemas, and framework sources |
 
-The full layered architecture (Sources → Ingestion → OCSF → Detection / Evaluation → View → Remediation) is documented in [`ARCHITECTURE.md`](ARCHITECTURE.md). The eleven-principle security contract is in [`SECURITY_BAR.md`](SECURITY_BAR.md). Per-skill official references and IAM policies live in each skill's `REFERENCES.md`.
+The full layered architecture (Sources → Ingestion → Discovery / Enrich → Detection / Evaluation → View → Remediation) is documented in [`ARCHITECTURE.md`](ARCHITECTURE.md). The eleven-principle security contract is in [`SECURITY_BAR.md`](SECURITY_BAR.md). Per-skill official references and IAM policies live in each skill's `REFERENCES.md`.
 The CSPM skills are detection-only and re-verify the same `control_id` on the next run.
 The remediation skills (IAM departures, vuln pipeline) write back to a dual audit
 trail (DynamoDB + S3) and ingest results into the source warehouse so the next

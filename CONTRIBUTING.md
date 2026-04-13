@@ -6,6 +6,7 @@ Contributions are welcome. This repo follows a skills-based structure — each s
 
 1. Create a directory under the layered skill tree that matches the work:
    - `skills/ingestion/<skill-name>/`
+   - `skills/discovery/<skill-name>/`
    - `skills/detection/<skill-name>/`
    - `skills/evaluation/<skill-name>/`
    - `skills/view/<skill-name>/`

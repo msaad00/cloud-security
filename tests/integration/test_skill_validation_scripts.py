@@ -44,11 +44,12 @@ DEPENDENCIES = _load_module(
 class TestSkillValidationCommon:
     def test_discovers_skills_and_entrypoints(self):
         skills = COMMON.discover_skill_contracts()
-        assert len(skills) >= 27
+        assert len(skills) >= 28
         names = {skill.name for skill in skills}
         assert "detect-lateral-movement" in names
         assert "ingest-gcp-scc-ocsf" in names
         assert "ingest-azure-defender-for-cloud-ocsf" in names
+        assert "discover-ai-bom" in names
 
         ingest = next(skill for skill in skills if skill.name == "ingest-cloudtrail-ocsf")
         assert ingest.entrypoint is not None

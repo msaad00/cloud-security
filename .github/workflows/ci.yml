@@ -161,17 +161,18 @@ jobs:
             boto3 pytest pytest-cov
             google-cloud-compute google-cloud-iam google-cloud-resource-manager google-cloud-storage
             azure-identity azure-mgmt-resource
-      - name: Run AI infra skill suites
+      - name: Run discovery and AI infra skill suites
         shell: bash
         run: |
           set -euo pipefail
-          for skill in \
-            model-serving-security \
-            gpu-cluster-security \
-            discover-environment
+          for skill_dir in \
+            skills/discovery/discover-environment \
+            skills/discovery/discover-ai-bom \
+            skills/evaluation/model-serving-security \
+            skills/evaluation/gpu-cluster-security
           do
-            echo "==> skills/evaluation/${skill}"
-            pytest "skills/evaluation/${skill}/tests/" -v -o "testpaths=tests"
+            echo "==> ${skill_dir}"
+            pytest "${skill_dir}/tests/" -v -o "testpaths=tests"
           done
 
   test-integration:

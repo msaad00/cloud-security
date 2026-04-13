@@ -14,12 +14,14 @@ The format is loosely based on Keep a Changelog.
 ### Added
 - Repo-wide `CHANGELOG.md` to make material architecture, security, and skill changes discoverable without reading every PR.
 - [`docs/FRAMEWORK_MAPPINGS.md`](docs/FRAMEWORK_MAPPINGS.md) to consolidate ATT&CK, ATLAS, CIS, NIST, OWASP, SOC 2, ISO, and PCI coverage across the repo.
+- First `discovery/` layer AI BOM skill, `discover-ai-bom`, which turns AI asset inventory snapshots into a deterministic CycloneDX-aligned BOM.
 
 ### Changed
 - Removed the redirect-only `skills/ai-infra-security/` and `skills/compliance-cis-mitre/` stubs after the layered skill reshape settled.
 - Reframed `skills/detection-engineering/` as a shared OCSF contract and golden-fixture namespace rather than a temporary transition root.
 - Collapsed the largest CI matrices into grouped test lanes and added workflow concurrency so superseded PR runs cancel instead of flooding the queue.
 - Added repo-level dependency/import consistency validation and aligned missing cloud SDK declarations in `pyproject.toml`.
+- Moved `discover-environment` into the canonical `skills/discovery/` layer and wired discovery into the grouped `test-ai-infra` lane.
 
 ### Documentation
 - Clarified the repo-level release model: one repo version, lightweight per-skill contract metadata, no full per-skill semver yet.

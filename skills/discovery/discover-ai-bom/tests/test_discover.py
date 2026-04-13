@@ -1,0 +1,164 @@
+"""Tests for discover-ai-bom."""
+
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
+
+_SRC = Path(__file__).resolve().parent.parent / "src" / "discover.py"
+_SPEC = importlib.util.spec_from_file_location("discover_ai_bom", _SRC)
+assert _SPEC and _SPEC.loader
+_MODULE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_MODULE)
+
+build_bom = _MODULE.build_bom
+_normalize_assets = _MODULE._normalize_assets
+
+
+def _normalized_doc() -> dict:
+    return {
+        "inventory_id": "ai-estate-prod-2026-04-12",
+        "collected_at": "2026-04-12T00:00:00Z",
+        "assets": [
+            {
+                "provider": "aws",
+                "service": "sagemaker",
+                "kind": "model",
+                "id": "model:fraud-v5",
+                "name": "fraud-model",
+                "version": "5",
+                "framework": "xgboost",
+                "region": "us-east-1",
+                "sensitivity": "restricted",
+                "properties": {"owner": "fraud-platform", "api_key": "should-drop"},
+            },
+            {
+                "provider": "aws",
+                "service": "sagemaker",
+                "kind": "endpoint",
+                "id": "endpoint:fraud-prod",
+                "name": "fraud-endpoint",
+                "endpoint_url": "https://example.internal/invoke",
+                "dependencies": ["aws:sagemaker:model:model:fraud-v5"],
+            },
+        ],
+    }
+
+
+class TestNormalizedInventory:
+    def test_builds_components_services_and_dependencies(self):
+        bom = build_bom(_normalized_doc())
+        assert bom["bomFormat"] == "CycloneDX"
+        assert bom["specVersion"] == "1.7"
+        assert bom["serialNumber"].startswith("urn:uuid:")
+        assert len(bom["components"]) == 1
+        assert len(bom["services"]) == 1
+        assert bom["dependencies"] == [
+            {
+                "ref": "aws:sagemaker:endpoint:endpoint:fraud-prod",
+                "dependsOn": ["aws:sagemaker:model:model:fraud-v5"],
+            }
+        ]
+
+    def test_secret_like_properties_are_dropped(self):
+        bom = build_bom(_normalized_doc())
+        properties = bom["components"][0]["properties"]
+        assert {"name": "cloud-security:properties.owner", "value": "fraud-platform"} in properties
+        assert not any(prop["name"].endswith("api_key") for prop in properties)
+
+    def test_output_is_order_independent(self):
+        base = _normalized_doc()
+        reversed_doc = {
+            **base,
+            "assets": list(reversed(base["assets"])),
+        }
+        assert build_bom(base) == build_bom(reversed_doc)
+
+
+class TestProviderSnapshots:
+    def test_aws_snapshot_normalization(self):
+        assets = _normalize_assets(
+            {
+                "provider": "aws",
+                "sagemaker": {
+                    "model_packages": [
+                        {
+                            "ModelPackageArn": "arn:aws:sagemaker:us-east-1:123:model-package/fraud/5",
+                            "ModelPackageName": "fraud",
+                            "ModelPackageVersion": 5,
+                        }
+                    ],
+                    "endpoints": [
+                        {
+                            "EndpointArn": "arn:aws:sagemaker:us-east-1:123:endpoint/fraud",
+                            "EndpointName": "fraud",
+                            "ModelPackageArn": "arn:aws:sagemaker:us-east-1:123:model-package/fraud/5",
+                        }
+                    ],
+                },
+                "bedrock": {
+                    "custom_models": [
+                        {
+                            "modelArn": "arn:aws:bedrock:us-east-1:123:custom-model/fraud",
+                            "modelName": "fraud-custom",
+                            "foundationModelArn": "arn:aws:bedrock:::foundation-model/anthropic.claude",
+                        }
+                    ]
+                },
+            }
+        )
+        assert [asset["kind"] for asset in assets] == ["model", "endpoint", "model-package"]
+
+    def test_gcp_snapshot_normalization(self):
+        assets = _normalize_assets(
+            {
+                "provider": "gcp",
+                "vertex_ai": {
+                    "models": [{"name": "projects/p/locations/us/models/1", "displayName": "fraud-model"}],
+                    "endpoints": [
+                        {
+                            "name": "projects/p/locations/us/endpoints/99",
+                            "displayName": "fraud-endpoint",
+                            "deployedModels": [{"model": "projects/p/locations/us/models/1"}],
+                        }
+                    ],
+                },
+            }
+        )
+        assert [asset["kind"] for asset in assets] == ["endpoint", "model"]
+
+    def test_azure_snapshot_normalization(self):
+        assets = _normalize_assets(
+            {
+                "provider": "azure",
+                "azure_ml": {
+                    "models": [{"id": "/models/fraud", "name": "fraud-model", "version": "3"}],
+                    "deployments": [{"id": "/deployments/fraud-blue", "name": "fraud-blue", "model": "/models/fraud"}],
+                    "online_endpoints": [
+                        {
+                            "name": "fraud-endpoint",
+                            "deployments": [{"id": "/deployments/fraud-blue"}],
+                        }
+                    ],
+                },
+            }
+        )
+        assert [asset["kind"] for asset in assets] == ["deployment", "endpoint", "model"]
+
+
+class TestErrors:
+    def test_requires_assets_or_supported_provider_snapshot(self):
+        try:
+            build_bom({"inventory_id": "empty"})
+        except ValueError as exc:
+            assert "supported provider snapshot" in str(exc)
+        else:  # pragma: no cover - defensive
+            raise AssertionError("expected ValueError for empty inventory")
+
+    def test_requires_asset_identity(self):
+        try:
+            _normalize_assets({"assets": [{"provider": "aws", "service": "bedrock", "kind": "model"}]})
+        except ValueError as exc:
+            assert "at least one of `id` or `name`" in str(exc)
+        else:  # pragma: no cover - defensive
+            raise AssertionError("expected ValueError for missing asset identity")
