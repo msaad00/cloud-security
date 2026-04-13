@@ -161,6 +161,7 @@ class TestPositiveCases:
         f = list(detect([_anchor_event(), _flow()]))[0]
         assert f["metadata"]["product"]["name"] == REPO_NAME
         assert f["metadata"]["product"]["vendor_name"] == REPO_VENDOR
+        assert f["metadata"]["uid"] == f["finding_info"]["uid"]
 
     def test_multiple_internal_dsts_produce_multiple_findings(self):
         events = [

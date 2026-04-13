@@ -200,6 +200,7 @@ class TestOcsfCloudInventoryBridge:
         assert event["class_uid"] == 5023
         assert event["category_uid"] == 5
         assert event["activity_id"] == 99
+        assert len(event["metadata"]["uid"]) == 64
         assert event["metadata"]["product"]["feature"]["name"] == "discover-environment"
         assert event["cloud"]["provider"] == "aws"
         assert event["cloud"]["account"]["uid"] == "123456789012"
@@ -219,3 +220,12 @@ class TestOcsfCloudInventoryBridge:
         assert event["class_uid"] == 5023
         assert "cloud" not in event
         assert event["count"] == 1
+
+    def test_ocsf_bridge_metadata_uid_is_deterministic(self):
+        graph = EnvironmentGraph(provider="aws", region="us-east-1", discovered_at="2026-04-13T12:00:00+00:00")
+        graph.add_node(GraphNode(id="aws:account:123456789012", entity_type="cloud_resource", label="acct"))
+        graph.add_node(GraphNode(id="aws:s3:prod-bucket", entity_type="cloud_resource", label="bucket"))
+
+        a = to_ocsf_cloud_resources_inventory(graph)["metadata"]["uid"]
+        b = to_ocsf_cloud_resources_inventory(graph)["metadata"]["uid"]
+        assert a == b

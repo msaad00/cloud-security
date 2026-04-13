@@ -353,9 +353,10 @@ def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
         "time": parse_ts_ms(updated),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": asff_id or uid,
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "aws", "security-hub", "asff", "ingest", "passthrough"],

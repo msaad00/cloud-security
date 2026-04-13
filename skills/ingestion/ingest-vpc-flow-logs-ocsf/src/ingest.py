@@ -11,6 +11,7 @@ Contract: see ../OCSF_CONTRACT.md
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from typing import Any, Iterable
@@ -282,6 +283,26 @@ def convert_record(record: dict[str, str]) -> dict[str, Any] | None:
 
     action = record.get("action") or ""
     activity_id = activity_id_for_action(action)
+    metadata_uid = hashlib.sha256(
+        json.dumps(
+            {
+                "account-id": record.get("account-id", ""),
+                "interface-id": record.get("interface-id", ""),
+                "srcaddr": record.get("srcaddr", ""),
+                "dstaddr": record.get("dstaddr", ""),
+                "srcport": record.get("srcport", ""),
+                "dstport": record.get("dstport", ""),
+                "protocol": record.get("protocol", ""),
+                "start": record.get("start", ""),
+                "end": record.get("end", ""),
+                "action": action,
+                "bytes": record.get("bytes", ""),
+                "packets": record.get("packets", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     start_ms = sec_to_ms(record.get("start"))
     end_ms = sec_to_ms(record.get("end"))
@@ -301,9 +322,10 @@ def convert_record(record: dict[str, str]) -> dict[str, Any] | None:
         "time": event_time,
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "aws", "vpc-flow-logs", "ingest"],

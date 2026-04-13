@@ -46,6 +46,16 @@ Bridge artifacts are allowed only when:
 
 The direction of travel is still toward more native OCSF inventory/evidence use, not away from it.
 
+Some repo-local bridge/profile identifiers intentionally retain their older
+names for compatibility:
+- `cloud_security_mcp`
+- `cloud-security.environment-graph.v1`
+- `cloud-security:*` CycloneDX property keys in AI BOM artifacts
+
+Those identifiers are treated as compatibility contracts, not public branding.
+The emitted OCSF `metadata.product` identity and the public repo/docs surface
+must still use the current repo name.
+
 Current bridge modes shipped in-tree:
 - `discover-environment --output-format ocsf-cloud-resources-inventory`
 - `discover-control-evidence --output-format ocsf-live-evidence`
@@ -74,8 +84,9 @@ Every event a skill emits MUST populate these fields at minimum. Fields marked `
 | `status_id` | int [rec] | 0 Unknown, 1 Success, 2 Failure — recommended by OCSF 1.8 (not required) |
 | `time` | int [req] | Unix epoch **milliseconds** (not seconds) |
 | `metadata.version` | string [req] | `"1.8.0"` |
-| `metadata.product.name` | string [pin] | `"cloud-security"` |
-| `metadata.product.vendor_name` | string [pin] | `"msaad00/cloud-security"` |
+| `metadata.uid` | string [pin] | Deterministic event-level identity for SIEM dedupe and replay safety |
+| `metadata.product.name` | string [pin] | `"cloud-ai-security-skills"` |
+| `metadata.product.vendor_name` | string [pin] | `"msaad00/cloud-ai-security-skills"` |
 | `metadata.product.feature.name` | string [pin] | Name of the emitting skill (e.g. `"detect-mcp-tool-drift"`) |
 
 ## OCSF class usage
@@ -123,9 +134,10 @@ All detection skills in this category produce **Detection Finding** (class `2004
 
   "metadata": {
     "version": "1.8.0",
+    "uid": "det-mcp-drift-abc123",
     "product": {
-      "name": "cloud-security",
-      "vendor_name": "msaad00/cloud-security",
+      "name": "cloud-ai-security-skills",
+      "vendor_name": "msaad00/cloud-ai-security-skills",
       "feature": {"name": "detect-mcp-tool-drift"}
     },
     "labels": ["detection-engineering", "mcp", "supply-chain"]
@@ -166,6 +178,8 @@ All detection skills in this category produce **Detection Finding** (class `2004
 ```
 
 The point: **a downstream tool (ClickHouse, Splunk OCSF app, Grafana) can pivot on `finding_info.attacks[].technique.uid` without ever reading the rule code**. That is the whole benefit of keeping MITRE inside OCSF instead of as a sidecar mapping.
+
+`metadata.uid` is the event-level companion to `finding_info.uid`. Use it for replay-safe SIEM dedupe and index merges; use `finding_info.uid` for finding lifecycle and sink-side upserts.
 
 ## MITRE ATT&CK version pinning
 

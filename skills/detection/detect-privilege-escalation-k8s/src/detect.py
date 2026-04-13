@@ -158,9 +158,10 @@ def _build_finding(
         "time": last_seen_time or _now_ms(),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": uid,
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "kubernetes", "privilege-escalation", rule_id],

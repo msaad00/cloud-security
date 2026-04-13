@@ -5,9 +5,9 @@
     {
       "tool": {
         "driver": {
-          "name": "cloud-security-detection-engineering",
+          "name": "cloud-ai-security-skills-detection-engineering",
           "version": "0.1.0",
-          "informationUri": "https://github.com/msaad00/cloud-security",
+          "informationUri": "https://github.com/msaad00/cloud-ai-security-skills",
           "rules": [
             {
               "id": "T1552",

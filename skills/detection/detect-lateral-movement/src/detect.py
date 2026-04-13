@@ -272,6 +272,7 @@ def _build_finding(
         "time": _event_time(flow_event) or _now_ms(),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": uid,
             "product": {
                 "name": REPO_NAME,
                 "vendor_name": REPO_VENDOR,

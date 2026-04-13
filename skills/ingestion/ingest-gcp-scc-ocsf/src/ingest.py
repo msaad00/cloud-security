@@ -105,9 +105,10 @@ def convert_finding(finding: dict[str, Any]) -> dict[str, Any]:
         "time": event_time,
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": str(finding.get("name") or uid),
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "gcp", "scc", "ingest", "passthrough"],

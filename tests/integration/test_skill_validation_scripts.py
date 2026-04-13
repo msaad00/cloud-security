@@ -44,6 +44,10 @@ COVERAGE = _load_module(
     "cloud_security_validate_framework_coverage_test",
     SCRIPTS / "validate_framework_coverage.py",
 )
+OCSF_METADATA = _load_module(
+    "cloud_security_validate_ocsf_metadata_test",
+    SCRIPTS / "validate_ocsf_metadata.py",
+)
 
 
 class TestSkillValidationCommon:
@@ -85,6 +89,9 @@ class TestValidationScripts:
 
     def test_framework_coverage_validator_passes(self):
         assert COVERAGE.main() == 0
+
+    def test_ocsf_metadata_validator_passes(self):
+        assert OCSF_METADATA.main() == 0
 
     def test_gpu_skill_ai_framework_depth_is_registered(self):
         registry = json.loads((ROOT / "docs" / "framework-coverage.json").read_text())

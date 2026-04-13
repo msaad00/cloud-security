@@ -21,6 +21,8 @@
 - Claude Code memory: [CLAUDE.md](CLAUDE.md)
 - MCP usage: [docs/agent-integrations.md](docs/agent-integrations.md) and [`.mcp.json`](.mcp.json)
 - Architecture and visuals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DIAGRAMS.md](docs/DIAGRAMS.md)
+- Runtime isolation and trust boundaries: [docs/RUNTIME_ISOLATION.md](docs/RUNTIME_ISOLATION.md)
+- SIEM indexing and dedupe: [docs/SIEM_INDEX_GUIDE.md](docs/SIEM_INDEX_GUIDE.md)
 - Coverage and roadmap: [docs/COVERAGE_MODEL.md](docs/COVERAGE_MODEL.md), [docs/framework-coverage.json](docs/framework-coverage.json), and [docs/ROADMAP.md](docs/ROADMAP.md)
 
 | Tool | Best integration path | What to rely on |
@@ -218,6 +220,8 @@ This is a security tool. Trustworthiness is the first feature, not an afterthoug
 | [`framework-coverage.json`](docs/framework-coverage.json) | Machine-readable framework, provider, and asset coverage registry |
 | [`FRAMEWORK_MAPPINGS.md`](docs/FRAMEWORK_MAPPINGS.md) | Where ATT&CK, ATLAS, CIS, NIST, OWASP, SOC 2, ISO, and PCI coverage lives today |
 | [`ROADMAP.md`](docs/ROADMAP.md) | Coverage and execution roadmap for cloud, AI, and framework depth |
+| [`RUNTIME_ISOLATION.md`](docs/RUNTIME_ISOLATION.md) | Sandbox, credential, transport, integrity, and approval guidance by execution mode |
+| [`SIEM_INDEX_GUIDE.md`](docs/SIEM_INDEX_GUIDE.md) | Index fields, dedupe keys, timestamps, and transport guidance for OCSF consumers |
 | [`mcp-server/README.md`](mcp-server/README.md) | Thin local MCP wrapper for auto-discovered skills |
 | [`DEPENDENCY_HYGIENE_SKILL.md`](docs/DEPENDENCY_HYGIENE_SKILL.md) | Proposed safe dependency-update skill contract |
 | [`SKILL_CONTRACT.md`](docs/SKILL_CONTRACT.md) | Minimum files, metadata, and guardrails for shipped skills |

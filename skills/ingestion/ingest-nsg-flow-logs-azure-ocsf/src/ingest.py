@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -127,6 +128,24 @@ def convert_tuple(
     bytes_total = sum(value for value in (_int_or_none(tuple_data.get("bytes_out")), _int_or_none(tuple_data.get("bytes_in"))) if value is not None)
     packets_total = sum(value for value in (_int_or_none(tuple_data.get("packets_out")), _int_or_none(tuple_data.get("packets_in"))) if value is not None)
     activity_id = activity_id_for_decision(tuple_data.get("decision"))
+    metadata_uid = hashlib.sha256(
+        json.dumps(
+            {
+                "resource_id": resource_id,
+                "rule": rule,
+                "time": tuple_data.get("time", ""),
+                "src_ip": tuple_data.get("src_ip", ""),
+                "dst_ip": tuple_data.get("dst_ip", ""),
+                "src_port": tuple_data.get("src_port", ""),
+                "dst_port": tuple_data.get("dst_port", ""),
+                "protocol": tuple_data.get("protocol", ""),
+                "decision": tuple_data.get("decision", ""),
+                "flow_state": tuple_data.get("flow_state", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     event: dict[str, Any] = {
         "activity_id": activity_id,
@@ -140,9 +159,10 @@ def convert_tuple(
         "time": time_ms,
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
-                "name": "cloud-security",
-                "vendor_name": "msaad00/cloud-security",
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
             "labels": ["detection-engineering", "azure", "nsg-flow-logs", "ingest"],
