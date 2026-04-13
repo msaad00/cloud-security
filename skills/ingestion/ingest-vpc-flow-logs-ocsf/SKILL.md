@@ -16,11 +16,13 @@ description: >-
   (use ingest-cloudtrail-ocsf). Do NOT use as a
   detection skill — this only normalises network flows.
 license: Apache-2.0
+input_formats: raw
+output_formats: ocsf, native
 ---
 
 # ingest-vpc-flow-logs-ocsf
 
-Thin ingestion skill: raw AWS VPC Flow Log records in → OCSF 1.8 Network Activity JSONL out. No detection logic, no AWS API calls, no side effects.
+Thin ingestion skill: raw AWS VPC Flow Log records in → canonical network-flow projection → OCSF 1.8 Network Activity JSONL or native enriched network-flow JSONL out. No detection logic, no AWS API calls, no side effects.
 
 ## Wire contract
 
@@ -32,7 +34,9 @@ version account-id interface-id srcaddr dstaddr srcport dstport protocol packets
 
 The skill also understands the v5 extended fields if they are declared in the header: `vpc-id subnet-id instance-id tcp-flags type pkt-srcaddr pkt-dstaddr region az-id sublocation-type sublocation-id pkt-src-aws-service pkt-dst-aws-service flow-direction traffic-path`.
 
-Writes OCSF 1.8 **Network Activity** (`class_uid: 4001`, `category_uid: 4`). See [`../OCSF_CONTRACT.md`](../OCSF_CONTRACT.md).
+By default it writes OCSF 1.8 **Network Activity** (`class_uid: 4001`, `category_uid: 4`). See [`../OCSF_CONTRACT.md`](../OCSF_CONTRACT.md).
+
+When `--output-format native` is selected, it emits the same flow in the repo's native enriched shape with stable `event_uid`, normalized source/destination, byte counters, protocol/direction, and AWS scope fields, but without the OCSF envelope.
 
 ## activity_id mapping
 
@@ -113,6 +117,9 @@ So `tcp-flags=18` means `SYN|ACK`. The skill decodes this into a comma-joined st
 ```bash
 # Single file from S3 (after sync / gunzip)
 python src/ingest.py vpc-flow.log > vpc-flow.ocsf.jsonl
+
+# Same input, native enriched output
+python src/ingest.py vpc-flow.log --output-format native > vpc-flow.native.jsonl
 
 # Piped from CloudWatch Logs Insights query output (JSON format)
 aws logs start-query --log-group-name "/aws/vpc/flow" ... \
