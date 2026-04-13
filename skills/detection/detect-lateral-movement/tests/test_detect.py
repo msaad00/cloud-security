@@ -191,6 +191,46 @@ class TestPositiveCases:
         findings = list(detect(events))
         assert len(findings) == 1
 
+    def test_exact_window_boundary_is_included(self):
+        events = [
+            _anchor_event(time_ms=1000),
+            _flow(time_ms=1000 + CORRELATION_WINDOW_MS, dst_ip="10.0.3.75", bytes_=450000),
+        ]
+        findings = list(detect(events))
+        assert len(findings) == 1
+
+    def test_out_of_order_input_stream_still_fires(self):
+        events = [
+            _flow(time_ms=60000, dst_ip="10.0.3.75", bytes_=450000),
+            _anchor_event(time_ms=1000),
+        ]
+        findings = list(detect(events))
+        assert len(findings) == 1
+
+    def test_duplicate_anchors_same_session_same_dst_dedupe_to_one(self):
+        events = [
+            _anchor_event(time_ms=1000, session_uid="shared-session"),
+            _anchor_event(time_ms=2000, session_uid="shared-session"),
+            _flow(time_ms=60000, dst_ip="10.0.3.75", bytes_=450000),
+        ]
+        findings = list(detect(events))
+        assert len(findings) == 1
+
+    def test_same_actor_name_different_sessions_produce_distinct_findings(self):
+        events = [
+            _anchor_event(time_ms=1000, actor="alice", session_uid="session-a"),
+            _anchor_event(time_ms=2000, actor="alice", session_uid="session-b"),
+            _flow(time_ms=60000, dst_ip="10.0.3.75", dst_port=3306, bytes_=450000),
+            _flow(time_ms=61000, dst_ip="10.0.3.75", dst_port=3306, bytes_=470000),
+        ]
+        findings = list(detect(events))
+        assert len(findings) == 2
+        sessions = {
+            next(o["value"] for o in finding["observables"] if o["name"] == "session.uid")
+            for finding in findings
+        }
+        assert sessions == {"session-a", "session-b"}
+
 
 # ── Negative controls ───────────────────────────────────────────
 
@@ -347,10 +387,45 @@ class TestCrossCloudAnchors:
         flow = _flow(provider="GCP", account="my-project", dst_ip="10.128.0.8")
         assert list(detect([anchor, flow])) == []
 
+    def test_multiple_providers_in_one_stream_only_match_same_provider(self):
+        events = [
+            _anchor_event(provider="AWS", session_uid="aws-session-1", time_ms=1000),
+            _anchor_event(
+                provider="Azure",
+                service="graph.microsoft.com",
+                operation="POST /servicePrincipals/{id}/addPassword",
+                account="sub-1",
+                session_uid="azure-session-1",
+                time_ms=2000,
+            ),
+            _flow(provider="AWS", account="111122223333", dst_ip="10.0.3.75", time_ms=60000),
+            _flow(provider="Azure", account="sub-1", dst_ip="10.1.2.7", time_ms=61000),
+            _flow(provider="GCP", account="gcp-project", dst_ip="10.128.0.8", time_ms=62000),
+        ]
+        findings = list(detect(events))
+        assert len(findings) == 2
+        providers = {
+            next(o["value"] for o in finding["observables"] if o["name"] == "cloud.provider")
+            for finding in findings
+        }
+        assert providers == {"AWS", "Azure"}
+
     def test_account_mismatch_does_not_fire(self):
         anchor = _anchor_event(provider="Azure", account="sub-a", session_uid="azure-session-1")
         flow = _flow(provider="Azure", account="sub-b", dst_ip="10.1.2.7")
         assert list(detect([anchor, flow])) == []
+
+    def test_missing_flow_account_does_not_block_match(self):
+        anchor = _anchor_event(
+            provider="Azure",
+            service="microsoft.authorization",
+            operation="MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE",
+            account="sub-a",
+            session_uid="azure-session-1",
+        )
+        flow = _flow(provider="Azure", account="", dst_ip="10.1.2.7")
+        findings = list(detect([anchor, flow]))
+        assert len(findings) == 1
 
     def test_gcp_anchor_suffixes_constant(self):
         assert "GenerateAccessToken" in GCP_IDENTITY_PIVOT_SUFFIXES
