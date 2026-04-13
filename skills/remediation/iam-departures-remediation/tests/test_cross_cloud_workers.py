@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -190,6 +191,18 @@ class TestSnowflake:
         assert "VIEWS" in _OWNERSHIP_OBJECT_TYPES
         assert "SCHEMAS" in _OWNERSHIP_OBJECT_TYPES
         assert "STAGES" in _OWNERSHIP_OBJECT_TYPES
+
+    def test_suppresses_verbose_connector_logs(self):
+        from lambda_worker.clouds import snowflake_user
+
+        with patch("lambda_worker.clouds.snowflake_user.logging.getLogger") as mock_get_logger:
+            connector_logger = MagicMock()
+            mock_get_logger.return_value = connector_logger
+
+            snowflake_user._configure_snowflake_logging()
+
+        mock_get_logger.assert_called_once_with("snowflake.connector")
+        connector_logger.setLevel.assert_called_once_with(snowflake_user.logging.WARNING)
 
 
 # ── Databricks ───────────────────────────────────────────────────

@@ -72,6 +72,11 @@ _OWNERSHIP_OBJECT_TYPES = [
 _IDENTIFIER_RE = re.compile(r"^[^\x00\r\n]+$")
 
 
+def _configure_snowflake_logging() -> None:
+    """Suppress verbose connector logging before credentials are used."""
+    logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
+
+
 def get_required_permissions() -> list[str]:
     """Return minimum Snowflake privileges needed."""
     return [
@@ -85,6 +90,7 @@ def _get_connection():
     """Create authenticated Snowflake connection."""
     import snowflake.connector
 
+    _configure_snowflake_logging()
     return snowflake.connector.connect(
         account=os.environ["SNOWFLAKE_REMEDIATION_ACCOUNT"],
         user=os.environ["SNOWFLAKE_REMEDIATION_USER"],

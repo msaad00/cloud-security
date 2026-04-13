@@ -31,6 +31,11 @@ logger = logging.getLogger(__name__)
 SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
+def _configure_snowflake_logging() -> None:
+    """Suppress verbose connector logging before credentials are used."""
+    logging.getLogger("snowflake.connector").setLevel(logging.WARNING)
+
+
 class RemediationStatus(Enum):
     """Lifecycle state of a departure record."""
 
@@ -213,6 +218,7 @@ class SnowflakeSource(HRSource):
     def _get_connection(self) -> Any:
         import snowflake.connector
 
+        _configure_snowflake_logging()
         return snowflake.connector.connect(
             account=self.account,
             user=self.user,
