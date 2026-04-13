@@ -15,6 +15,9 @@ The format is loosely based on Keep a Changelog.
 - `docs/COVERAGE_MODEL.md`, `docs/framework-coverage.json`, and `docs/ROADMAP.md` to make framework, provider, asset, and execution coverage measurable and auditable.
 - `scripts/validate_framework_coverage.py` so CI can reject undocumented or drifting coverage claims.
 
+### Changed
+- Promoted the IAM departures cross-cloud workflow visual in `README.md` and made the CI badge explicitly track the `main` branch.
+
 ## 0.4.0 - 2026-04-13
 
 ### Added

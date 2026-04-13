@@ -1,6 +1,7 @@
 # cloud-security
 
-[![CI](https://github.com/msaad00/cloud-security/actions/workflows/ci.yml/badge.svg)](https://github.com/msaad00/cloud-security/actions/workflows/ci.yml)
+[![CI](https://github.com/msaad00/cloud-security/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/msaad00/cloud-security/actions/workflows/ci.yml?query=branch%3Amain)
+[![Version](https://img.shields.io/badge/version-0.4.0-0ea5e9)](CHANGELOG.md)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![OCSF 1.8](https://img.shields.io/badge/OCSF-1.8-22d3ee)](https://schema.ocsf.io/1.8.0)
@@ -20,9 +21,12 @@
 - Architecture and visuals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DIAGRAMS.md](docs/DIAGRAMS.md)
 - Coverage and roadmap: [docs/COVERAGE_MODEL.md](docs/COVERAGE_MODEL.md), [docs/framework-coverage.json](docs/framework-coverage.json), and [docs/ROADMAP.md](docs/ROADMAP.md)
 
-![Repo architecture](docs/images/repo-architecture.svg)
+## Flagship workflow
+
+![IAM departures cross-cloud workflow](docs/images/iam-departures-architecture.svg)
 
 **Visuals**
+- [IAM departures cross-cloud workflow](docs/images/iam-departures-architecture.svg)
 - [Repo architecture](docs/images/repo-architecture.svg)
 - [IAM departures flow](docs/images/iam-departures-data-flow.svg)
 - [Detection pipeline](docs/images/detection-pipeline.svg)
