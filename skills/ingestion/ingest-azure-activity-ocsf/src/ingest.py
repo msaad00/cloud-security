@@ -10,6 +10,7 @@ Contract: see ../OCSF_CONTRACT.md
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -279,6 +280,19 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any]:
     operation_name = entry.get("operationName", "")
     activity_id = infer_activity_id(operation_name)
     status_id, status_detail = _status_id_and_detail(entry)
+    metadata_uid = str(entry.get("eventDataId") or entry.get("correlationId") or "").strip() or hashlib.sha256(
+        json.dumps(
+            {
+                "time": entry.get("time", ""),
+                "operationName": operation_name,
+                "resourceId": entry.get("resourceId", ""),
+                "caller": entry.get("caller", ""),
+                "correlationId": entry.get("correlationId", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     event: dict[str, Any] = {
         "activity_id": activity_id,
@@ -292,6 +306,7 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any]:
         "time": parse_ts_ms(entry.get("time")),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

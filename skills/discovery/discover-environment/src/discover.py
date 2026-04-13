@@ -15,6 +15,7 @@ Read-only — uses only viewer/audit permissions. No write access.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from dataclasses import asdict, dataclass, field
@@ -779,6 +780,24 @@ def _node_to_ocsf_resource(node: GraphNode, region: str) -> dict[str, Any]:
     return resource
 
 
+def _metadata_uid(graph: EnvironmentGraph, inventory_nodes: list[GraphNode]) -> str:
+    canonical = json.dumps(
+        {
+            "provider": graph.provider,
+            "region": graph.region,
+            "discovered_at": graph.discovered_at,
+            "nodes": sorted(node.id for node in inventory_nodes),
+            "edges": sorted(
+                f"{edge.source}->{edge.relationship}->{edge.target}"
+                for edge in graph.edges
+            ),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def to_ocsf_cloud_resources_inventory(graph: EnvironmentGraph) -> dict[str, Any]:
     inventory_nodes = [node for node in graph.nodes if not node.id.startswith("mitre:")]
     message = f"{graph.provider} cloud resource inventory snapshot"
@@ -799,6 +818,7 @@ def to_ocsf_cloud_resources_inventory(graph: EnvironmentGraph) -> dict[str, Any]
         "message": message,
         "metadata": {
             "version": "1.8.0",
+            "uid": _metadata_uid(graph, inventory_nodes),
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

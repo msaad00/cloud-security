@@ -119,7 +119,16 @@ class TestConvertEvent:
         e = convert_event(self._base_event())
         assert e["metadata"]["product"]["feature"]["name"] == SKILL_NAME
         assert e["metadata"]["version"] == OCSF_VERSION
+        assert e["metadata"]["uid"] == "abc-123"
         assert "cloudtrail" in e["metadata"]["labels"]
+
+    def test_metadata_uid_falls_back_to_deterministic_hash(self):
+        base = self._base_event()
+        base.pop("eventID")
+        a = convert_event(base)["metadata"]["uid"]
+        b = convert_event(base)["metadata"]["uid"]
+        assert a == b
+        assert len(a) == 64
 
     def test_status_success_when_no_error(self):
         e = convert_event(self._base_event())

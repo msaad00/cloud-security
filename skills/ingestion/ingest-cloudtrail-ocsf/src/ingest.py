@@ -10,6 +10,7 @@ Contract: see ../OCSF_CONTRACT.md
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -230,6 +231,20 @@ def convert_event(raw: dict[str, Any]) -> dict[str, Any]:
     error_code = raw.get("errorCode")
     status_id = STATUS_FAILURE if error_code else STATUS_SUCCESS
 
+    metadata_uid = str(raw.get("eventID") or "").strip() or hashlib.sha256(
+        json.dumps(
+            {
+                "eventSource": raw.get("eventSource", ""),
+                "eventName": event_name,
+                "eventTime": raw.get("eventTime", ""),
+                "recipientAccountId": raw.get("recipientAccountId", ""),
+                "requestID": raw.get("requestID", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
     event: dict[str, Any] = {
         "activity_id": activity_id,
         "category_uid": CATEGORY_UID,
@@ -242,6 +257,7 @@ def convert_event(raw: dict[str, Any]) -> dict[str, Any]:
         "time": parse_ts_ms(raw.get("eventTime")),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

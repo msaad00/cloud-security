@@ -92,6 +92,20 @@ def parse_ts_ms(ts: str | None) -> int:
 
 def _base_event(raw: dict[str, Any], activity_id: int) -> dict[str, Any]:
     """Populate every OCSF field pinned in OCSF_CONTRACT.md."""
+    metadata_uid = hashlib.sha256(
+        json.dumps(
+            {
+                "timestamp": raw.get("timestamp", ""),
+                "session_id": raw.get("session_id", "sess-unknown"),
+                "method": raw.get("method", ""),
+                "direction": raw.get("direction", ""),
+                "params": raw.get("params", {}),
+                "body": raw.get("body", {}),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
     return {
         "activity_id": activity_id,
         "category_uid": CATEGORY_UID,
@@ -104,6 +118,7 @@ def _base_event(raw: dict[str, Any], activity_id: int) -> dict[str, Any]:
         "time": parse_ts_ms(raw.get("timestamp")),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "profiles": [MCP_PROFILE],
             "product": {
                 "name": "cloud-ai-security-skills",

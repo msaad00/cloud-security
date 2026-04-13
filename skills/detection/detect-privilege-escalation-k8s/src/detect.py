@@ -158,6 +158,7 @@ def _build_finding(
         "time": last_seen_time or _now_ms(),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

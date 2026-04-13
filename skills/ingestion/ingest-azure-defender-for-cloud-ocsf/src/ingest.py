@@ -120,6 +120,7 @@ def convert_alert(alert: dict[str, Any]) -> dict[str, Any]:
         "time": event_time,
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": alert_id or uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

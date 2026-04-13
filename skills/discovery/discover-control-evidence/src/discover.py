@@ -376,6 +376,7 @@ def to_ocsf_live_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
         "time": time_ms,
         "metadata": {
             "version": "1.8.0",
+            "uid": evidence["evidence_id"],
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

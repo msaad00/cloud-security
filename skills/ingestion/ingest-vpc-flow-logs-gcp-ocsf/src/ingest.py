@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -187,6 +188,24 @@ def convert_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
     start_ms = parse_ts_ms(payload.get("start_time"))
     end_ms = parse_ts_ms(payload.get("end_time"))
     event_time = end_ms or start_ms or parse_ts_ms(entry.get("timestamp")) or int(datetime.now(timezone.utc).timestamp() * 1000)
+    metadata_uid = hashlib.sha256(
+        json.dumps(
+            {
+                "project_id": (((payload.get("src_vpc") or {}).get("project_id")) or ((payload.get("dest_vpc") or {}).get("project_id")) or (((entry.get("resource") or {}).get("labels")) or {}).get("project_id", "")),
+                "start_time": payload.get("start_time", ""),
+                "end_time": payload.get("end_time", ""),
+                "src_ip": connection.get("src_ip", ""),
+                "dest_ip": connection.get("dest_ip", ""),
+                "src_port": connection.get("src_port", ""),
+                "dest_port": connection.get("dest_port", ""),
+                "protocol": connection.get("protocol", ""),
+                "reporter": payload.get("reporter", ""),
+                "disposition": payload.get("disposition", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     event: dict[str, Any] = {
         "activity_id": activity_id,
@@ -200,6 +219,7 @@ def convert_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
         "time": event_time,
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

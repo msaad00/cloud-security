@@ -10,6 +10,7 @@ Contract: see ../OCSF_CONTRACT.md
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -253,6 +254,21 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
     verb = entry.get("verb", "")
     activity_id = infer_activity_id(verb)
     status_id, status_detail = _status_id_and_detail(entry.get("responseStatus"))
+    obj_ref = entry.get("objectRef") or {}
+    metadata_uid = str(entry.get("auditID") or "").strip() or hashlib.sha256(
+        json.dumps(
+            {
+                "requestReceivedTimestamp": entry.get("requestReceivedTimestamp", ""),
+                "verb": verb,
+                "username": ((entry.get("user") or {}).get("username")) or "",
+                "resource": obj_ref.get("resource", ""),
+                "namespace": obj_ref.get("namespace", ""),
+                "name": obj_ref.get("name", ""),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     event: dict[str, Any] = {
         "activity_id": activity_id,
@@ -266,6 +282,7 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
         "time": parse_ts_ms(entry.get("requestReceivedTimestamp")),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",

@@ -11,6 +11,7 @@ Contract: see ../OCSF_CONTRACT.md
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -218,6 +219,19 @@ def convert_event(log_entry: dict[str, Any]) -> dict[str, Any] | None:
     method_name = proto.get("methodName", "")
     activity_id = infer_activity_id(method_name)
     status_id, status_detail = _status_id_and_detail(proto.get("status"))
+    metadata_uid = str(log_entry.get("insertId") or "").strip() or hashlib.sha256(
+        json.dumps(
+            {
+                "timestamp": log_entry.get("timestamp", ""),
+                "logName": log_entry.get("logName", ""),
+                "methodName": method_name,
+                "resourceName": proto.get("resourceName", ""),
+                "principalEmail": ((proto.get("authenticationInfo") or {}).get("principalEmail")) or "",
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
     event: dict[str, Any] = {
         "activity_id": activity_id,
@@ -231,6 +245,7 @@ def convert_event(log_entry: dict[str, Any]) -> dict[str, Any] | None:
         "time": parse_ts_ms(log_entry.get("timestamp")),
         "metadata": {
             "version": OCSF_VERSION,
+            "uid": metadata_uid,
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",
