@@ -39,6 +39,10 @@ DEPENDENCIES = _load_module(
     "cloud_security_validate_dependency_consistency_test",
     SCRIPTS / "validate_dependency_consistency.py",
 )
+COVERAGE = _load_module(
+    "cloud_security_validate_framework_coverage_test",
+    SCRIPTS / "validate_framework_coverage.py",
+)
 
 
 class TestSkillValidationCommon:
@@ -77,3 +81,6 @@ class TestValidationScripts:
 
     def test_dependency_consistency_validator_passes(self):
         assert DEPENDENCIES.main() == 0
+
+    def test_framework_coverage_validator_passes(self):
+        assert COVERAGE.main() == 0

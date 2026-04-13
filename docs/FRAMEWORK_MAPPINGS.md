@@ -3,6 +3,10 @@
 This document shows which frameworks are represented in `cloud-security`, where
 they appear today, and where coverage is still partial.
 
+For machine-readable source of truth, see
+[`docs/framework-coverage.json`](framework-coverage.json). For the policy behind
+that file, see [`docs/COVERAGE_MODEL.md`](COVERAGE_MODEL.md).
+
 The repo uses two mapping styles:
 
 - **Event / finding mappings** inside OCSF output, especially `finding_info.attacks[]`

@@ -18,6 +18,7 @@
 - Claude Code memory: [CLAUDE.md](CLAUDE.md)
 - MCP usage: [docs/agent-integrations.md](docs/agent-integrations.md) and [`.mcp.json`](.mcp.json)
 - Architecture and visuals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/DIAGRAMS.md](docs/DIAGRAMS.md)
+- Coverage and roadmap: [docs/COVERAGE_MODEL.md](docs/COVERAGE_MODEL.md), [docs/framework-coverage.json](docs/framework-coverage.json), and [docs/ROADMAP.md](docs/ROADMAP.md)
 
 ![Repo architecture](docs/images/repo-architecture.svg)
 
@@ -131,7 +132,7 @@ skills/
 │   ├── cspm-azure-cis-benchmark    (CIS Azure Foundations v2.1 — 6 checks)
 │   ├── k8s-security-benchmark      (CIS Kubernetes — 10 checks)
 │   ├── container-security          (CIS Docker — 8 checks)
-│   ├── model-serving-security      (16 checks — auth / rate limit / egress / safety)
+│   ├── model-serving-security      (20 checks — auth / rate limit / egress / network / safety)
 │   └── gpu-cluster-security        (13 checks — runtime / driver / tenant isolation)
 │
 ├── view/                           "OCSF → reviewable output"
@@ -193,7 +194,10 @@ This is a security tool. Trustworthiness is the first feature, not an afterthoug
 | [`DIAGRAMS.md`](docs/DIAGRAMS.md) | Architecture map, IAM departures flow, and detection pipeline visuals |
 | [`CI_WORKFLOW.md`](docs/CI_WORKFLOW.md) | CI lane layout, dedupe rules, and follow-up simplification plan |
 | [`CHANGELOG.md`](CHANGELOG.md) | Repo-level release notes and material skill changes |
+| [`COVERAGE_MODEL.md`](docs/COVERAGE_MODEL.md) | What framework coverage means and how it is measured |
+| [`framework-coverage.json`](docs/framework-coverage.json) | Machine-readable framework, provider, and asset coverage registry |
 | [`FRAMEWORK_MAPPINGS.md`](docs/FRAMEWORK_MAPPINGS.md) | Where ATT&CK, ATLAS, CIS, NIST, OWASP, SOC 2, ISO, and PCI coverage lives today |
+| [`ROADMAP.md`](docs/ROADMAP.md) | Coverage and execution roadmap for cloud, AI, and framework depth |
 | [`mcp-server/README.md`](mcp-server/README.md) | Thin local MCP wrapper for auto-discovered skills |
 | [`DEPENDENCY_HYGIENE_SKILL.md`](docs/DEPENDENCY_HYGIENE_SKILL.md) | Proposed safe dependency-update skill contract |
 | [`SKILL_CONTRACT.md`](docs/SKILL_CONTRACT.md) | Minimum files, metadata, and guardrails for shipped skills |

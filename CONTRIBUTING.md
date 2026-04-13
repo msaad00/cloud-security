@@ -38,6 +38,7 @@ metadata:
 8. Document whether the skill is read-only, dry-run capable, HITL-gated, or side-effectful
 9. Add tests for malformed input, provider quirks, and any deprecated API shape you are intentionally supporting during migration
 10. Add your skill to the catalog in `README.md` and `skills/README.md`
+11. Add or update the skill entry in `docs/framework-coverage.json` when the change affects framework, provider, or asset coverage
 
 ## Code standards
 
@@ -49,6 +50,7 @@ metadata:
 - Prefer only official vendor docs, schemas, and APIs in `REFERENCES.md`
 - Put structured results on `stdout`, debug/warning detail on `stderr`, and fail closed on invalid input
 - Follow [`docs/SKILL_CONTRACT.md`](docs/SKILL_CONTRACT.md) for the minimum shipped-skill bar
+- Keep framework claims measurable and machine-readable via [`docs/COVERAGE_MODEL.md`](docs/COVERAGE_MODEL.md) and [`docs/framework-coverage.json`](docs/framework-coverage.json)
 - Design for all execution modes up front: CLI, CI, MCP, and persistent/serverless wrappers should not require different skill code
 - If the skill can write state, require dry-run-first behavior and document the approval/audit model
 
@@ -58,7 +60,7 @@ metadata:
 2. Add or modify skills following the structure above
 3. Ensure tests pass: `pytest skills/<layer>/your-skill/tests/ -v`
 4. Ensure linting passes: `ruff check .`
-5. Ensure shared validators pass: `python scripts/validate_skill_contract.py`, `python scripts/validate_skill_integrity.py`, `python scripts/validate_dependency_consistency.py`, and `python scripts/validate_safe_skill_bar.py`
+5. Ensure shared validators pass: `python scripts/validate_skill_contract.py`, `python scripts/validate_skill_integrity.py`, `python scripts/validate_dependency_consistency.py`, `python scripts/validate_framework_coverage.py`, and `python scripts/validate_safe_skill_bar.py`
 6. Open a PR against `main` with a clear description
 
 ## Security
