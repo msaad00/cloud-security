@@ -21,6 +21,7 @@ OCSF_VERSION = _INGEST.OCSF_VERSION
 SKILL_NAME = _INGEST.SKILL_NAME
 activity_id_for_action = _INGEST.activity_id_for_action
 convert_record = _INGEST.convert_record
+convert_record_native = _INGEST.convert_record_native
 decode_tcp_flags = _INGEST.decode_tcp_flags
 ingest = _INGEST.ingest
 parse_header = _INGEST.parse_header
@@ -275,6 +276,18 @@ class TestConvertRecord:
         assert e["start_time"] == 1775797200000
         assert e["end_time"] == 1775797260000
 
+    def test_native_output_keeps_enriched_flow_fields_without_ocsf_envelope(self):
+        e = convert_record_native(self._base())
+        assert e is not None
+        assert e["schema_mode"] == "native"
+        assert e["record_type"] == "network_activity"
+        assert e["provider"] == "AWS"
+        assert e["event_uid"]
+        assert e["src"]["ip"] == "10.0.0.1"
+        assert e["dst"]["ip"] == "10.0.0.2"
+        assert "class_uid" not in e
+        assert "metadata" not in e
+
 
 # ── Stream ingestion w/ header ───────────────────────────────────
 
@@ -312,6 +325,15 @@ class TestIngestStream:
         assert len(out) == 1
         assert "skipping line 1" in capsys.readouterr().err
 
+    def test_native_output_mode_emits_enriched_flows(self):
+        lines = ["5 111122223333 eni-abc 10.0.0.1 10.0.0.2 48123 22 6 12 1680 1775797200 1775797260 ACCEPT OK"]
+        out = list(ingest(lines, output_format="native"))
+        assert len(out) == 1
+        assert out[0]["schema_mode"] == "native"
+        assert out[0]["record_type"] == "network_activity"
+        assert out[0]["provider"] == "AWS"
+        assert "class_uid" not in out[0]
+
 
 # ── Golden fixture parity ────────────────────────────────────────
 
@@ -345,3 +367,8 @@ class TestGoldenFixture:
         events = _load_jsonl(OCSF)
         with_flags = [e for e in events if e["connection_info"].get("tcp_flags") == "SYN,ACK"]
         assert len(with_flags) >= 1
+
+    def test_native_golden_mode_keeps_expected_count(self):
+        produced = list(ingest(RAW.read_text().splitlines(), output_format="native"))
+        assert len(produced) == 5
+        assert all(event["schema_mode"] == "native" for event in produced)
