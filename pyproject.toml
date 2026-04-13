@@ -1,7 +1,7 @@
 [project]
 name = "cloud-security"
-version = "0.3.0"
-description = "Cloud security automations, benchmark checks, and remediation skills."
+version = "0.4.0"
+description = "OCSF-native security skills for cloud and AI systems."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
