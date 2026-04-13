@@ -42,6 +42,7 @@ The canonical cloud lateral-movement sequence after initial access:
    - AWS `AssumeRole*`
    - GCP service-account impersonation / key generation
    - Azure role assignment / access elevation / managed-identity assignment
+   - Azure Entra / Microsoft Graph application or service-principal credential changes
 3. From a compute resource inside the cloud network, attacker initiates east-west traffic to an internal service the original principal never accessed
 4. Data transfer starts
 
@@ -73,7 +74,7 @@ observable in the repo's shipped audit ingestors:
 |---|---|---|
 | AWS | IAM roles, federated role sessions | `AssumeRole`, `AssumeRoleWithSAML`, `AssumeRoleWithWebIdentity` |
 | GCP | Service accounts | IAM Credentials API token generation, ID token generation, JWT/blob signing, service-account key creation |
-| Azure | Service principals, managed identities | role assignments, elevate access, user-assigned managed identity attach |
+| Azure | Applications, service principals, managed identities | Azure Activity role assignments / elevate access / managed-identity attach, plus Entra / Graph password-key adds, app-role grants, and federated identity credential creation |
 
 This keeps the detector explicit and measurable for ATT&CK `T1021` and
 `T1078.004` without pretending it already covers every provider-native identity
@@ -81,9 +82,9 @@ event family.
 
 ## Current limits
 
-- Azure Entra / Microsoft Graph application credential events are **not**
-  covered here yet because they are not part of the current Azure Activity
-  ingest path.
+- Azure Entra / Microsoft Graph coverage here is limited to high-signal
+  application and service-principal credential changes plus app-role grants. It
+  is **not** a complete Entra administrative drift detector.
 - AWS IAM user access-key creation and policy-document drift are roadmap work,
   not current detector anchors.
 - GCP workload-identity federation abuse beyond the current IAM Credentials

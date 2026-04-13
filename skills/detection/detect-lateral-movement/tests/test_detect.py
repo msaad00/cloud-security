@@ -308,6 +308,40 @@ class TestCrossCloudAnchors:
         assert findings[0]["finding_info"]["title"].startswith("Azure lateral movement")
         assert "canonical Azure lateral movement pattern" in findings[0]["finding_info"]["desc"]
 
+    def test_azure_entra_service_principal_credential_pivot_fires(self):
+        anchor = _anchor_event(
+            provider="Azure",
+            service="graph.microsoft.com",
+            operation="POST /servicePrincipals/{id}/addPassword",
+            account="00000000-0000-0000-0000-000000000000",
+            session_uid="entra-session-1",
+        )
+        flow = _flow(
+            provider="Azure",
+            account="00000000-0000-0000-0000-000000000000",
+            dst_ip="10.1.2.7",
+        )
+        findings = list(detect([anchor, flow]))
+        assert len(findings) == 1
+        assert findings[0]["observables"][0]["value"] == "Azure"
+
+    def test_azure_entra_federated_identity_credential_pivot_fires(self):
+        anchor = _anchor_event(
+            provider="Azure",
+            service="Microsoft Graph",
+            operation="Create federated identity credential",
+            account="00000000-0000-0000-0000-000000000000",
+            session_uid="entra-session-2",
+        )
+        flow = _flow(
+            provider="Azure",
+            account="00000000-0000-0000-0000-000000000000",
+            dst_ip="10.1.3.9",
+        )
+        findings = list(detect([anchor, flow]))
+        assert len(findings) == 1
+        assert findings[0]["observables"][0]["value"] == "Azure"
+
     def test_provider_mismatch_does_not_fire(self):
         anchor = _anchor_event(provider="AWS", session_uid="aws-session-1")
         flow = _flow(provider="GCP", account="my-project", dst_ip="10.128.0.8")
@@ -338,13 +372,30 @@ class TestCrossCloudAnchors:
                 operation="MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE",
             )
         )
+        assert is_identity_pivot_anchor(
+            _anchor_event(
+                provider="Azure",
+                service="graph.microsoft.com",
+                operation="POST /applications/{id}/addPassword",
+            )
+        )
+        assert not is_identity_pivot_anchor(
+            _anchor_event(
+                provider="Azure",
+                service="graph.microsoft.com",
+                operation="GET /servicePrincipals/{id}/appRoleAssignments",
+            )
+        )
 
     def test_coverage_metadata_declares_identity_scope(self):
         metadata = coverage_metadata()
         assert "MITRE ATT&CK v14" in metadata["frameworks"]
         assert "azure" in metadata["providers"]
         assert "managed-identities" in metadata["asset_classes"]
+        assert "applications" in metadata["asset_classes"]
         assert "service-principals" in metadata["attack_coverage"]["azure"]["principal_types"]
+        assert "entra-graph" in metadata["attack_coverage"]["azure"]["operation_families"]
+        assert "POST /applications/{id}/addPassword" in metadata["attack_coverage"]["azure"]["operation_families"]["entra-graph"]
         assert "CreateServiceAccountKey" in "".join(metadata["attack_coverage"]["gcp"]["anchor_operations"])
 
 

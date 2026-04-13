@@ -75,15 +75,39 @@ GCP_IDENTITY_PIVOT_SUFFIXES = (
     "SignBlob",
     "CreateServiceAccountKey",
 )
-AZURE_IDENTITY_PIVOT_OPERATIONS = {
+AZURE_ACTIVITY_IDENTITY_PIVOT_OPERATIONS = {
     "MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE",
     "MICROSOFT.AUTHORIZATION/ELEVATEACCESS/ACTION",
     "MICROSOFT.MANAGEDIDENTITY/USERASSIGNEDIDENTITIES/ASSIGN/ACTION",
 }
+AZURE_ENTRA_SERVICE_NAMES = {
+    "GRAPH.MICROSOFT.COM",
+    "MICROSOFT GRAPH",
+    "MICROSOFT ENTRA ID",
+    "CORE DIRECTORY",
+}
+AZURE_ENTRA_EXACT_OPERATIONS = {
+    "ADD SERVICE PRINCIPAL CREDENTIALS",
+    "UPDATE APPLICATION - CERTIFICATES AND SECRETS MANAGEMENT",
+    "ADD APP ROLE ASSIGNMENT TO SERVICE PRINCIPAL",
+    "CREATE FEDERATED IDENTITY CREDENTIAL",
+    "ADD FEDERATED IDENTITY CREDENTIAL",
+}
 
 FRAMEWORKS = ("OCSF 1.8.0", "MITRE ATT&CK v14")
 PROVIDERS = ("aws", "azure", "gcp", "multi")
-ASSET_CLASSES = ("identities", "service-accounts", "managed-identities", "sessions", "api", "network")
+ASSET_CLASSES = (
+    "identities",
+    "applications",
+    "service-accounts",
+    "service-principals",
+    "managed-identities",
+    "federated-credentials",
+    "app-role-assignments",
+    "sessions",
+    "api",
+    "network",
+)
 ATTACK_COVERAGE = {
     "aws": {
         "principal_types": ["iam-roles", "federated-role-sessions"],
@@ -96,8 +120,32 @@ ATTACK_COVERAGE = {
         "techniques": ["T1021", "T1078.004"],
     },
     "azure": {
-        "principal_types": ["service-principals", "managed-identities"],
-        "anchor_operations": sorted(AZURE_IDENTITY_PIVOT_OPERATIONS),
+        "principal_types": ["applications", "service-principals", "managed-identities"],
+        "operation_families": {
+            "azure-activity": sorted(AZURE_ACTIVITY_IDENTITY_PIVOT_OPERATIONS),
+            "entra-graph": [
+                "Add service principal credentials",
+                "Update application - Certificates and secrets management",
+                "Add app role assignment to service principal",
+                "Create federated identity credential",
+                "POST /applications/{id}/addPassword",
+                "POST /applications/{id}/addKey",
+                "POST /servicePrincipals/{id}/addPassword",
+                "POST /servicePrincipals/{id}/addKey",
+                "POST /servicePrincipals/{id}/appRoleAssignments",
+                "POST /servicePrincipals/{id}/appRoleAssignedTo",
+                "POST /applications/{id}/federatedIdentityCredentials",
+            ],
+        },
+        "anchor_operations": sorted(
+            list(AZURE_ACTIVITY_IDENTITY_PIVOT_OPERATIONS)
+            + [
+                "Add service principal credentials",
+                "Update application - Certificates and secrets management",
+                "Add app role assignment to service principal",
+                "Create federated identity credential",
+            ]
+        ),
         "techniques": ["T1021", "T1078.004"],
     },
 }
@@ -186,6 +234,36 @@ def _bytes(event: dict[str, Any]) -> int:
         return 0
 
 
+def _normalize_token(value: str) -> str:
+    return " ".join((value or "").upper().replace("_", " ").split())
+
+
+def _compact_token(value: str) -> str:
+    return _normalize_token(value).replace(" ", "")
+
+
+def _is_azure_entra_pivot(service: str, operation: str) -> bool:
+    service_norm = _normalize_token(service)
+    operation_norm = _normalize_token(operation)
+    operation_compact = operation_norm.replace(" ", "")
+
+    if service_norm not in AZURE_ENTRA_SERVICE_NAMES:
+        return False
+
+    if operation_norm in AZURE_ENTRA_EXACT_OPERATIONS:
+        return True
+
+    if any(marker in operation_compact for marker in ("ADDPASSWORD", "ADDKEY")):
+        return True
+
+    if operation_norm.startswith("POST /") and any(
+        marker in operation_compact for marker in ("APPROLEASSIGNMENTS", "APPROLEASSIGNEDTO")
+    ):
+        return True
+
+    return operation_norm.startswith("POST /APPLICATIONS/") and "FEDERATEDIDENTITYCREDENTIALS" in operation_compact
+
+
 def is_identity_pivot_anchor(event: dict[str, Any]) -> bool:
     """Return True when an OCSF API Activity event is a high-signal pivot anchor."""
     if event.get("class_uid") != API_ACTIVITY_CLASS:
@@ -205,7 +283,11 @@ def is_identity_pivot_anchor(event: dict[str, Any]) -> bool:
         return any(last.endswith(suffix) for suffix in GCP_IDENTITY_PIVOT_SUFFIXES)
 
     if provider == "AZURE":
-        return operation.upper() in AZURE_IDENTITY_PIVOT_OPERATIONS
+        service_norm = _normalize_token(service)
+        operation_norm = _normalize_token(operation)
+        if operation_norm in AZURE_ACTIVITY_IDENTITY_PIVOT_OPERATIONS:
+            return True
+        return _is_azure_entra_pivot(service_norm, operation_norm)
 
     return False
 

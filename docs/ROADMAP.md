@@ -131,7 +131,7 @@ Open roadmap issues should be:
 
 Good examples:
 
-- `ATT&CK gap: Azure identity and service principal detections`
+- `ATT&CK gap: Azure Entra and service principal credential detections`
 - `ATT&CK gap: AWS IAM user and access-key identity pivots`
 - `ATT&CK gap: GCP service-account and workload-identity abuse detections`
 - `ATLAS gap: AI endpoint and model registry evaluation coverage`
