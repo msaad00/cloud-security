@@ -13,6 +13,10 @@
 - **Azure role assignments** — https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments
 - **Azure elevate access** — https://learn.microsoft.com/en-us/azure/role-based-access-control/elevate-access-global-admin
 - **Azure user-assigned managed identities** — https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/how-manage-user-assigned-managed-identities
+- **Microsoft Graph application addPassword** — https://learn.microsoft.com/en-us/graph/api/application-addpassword?view=graph-rest-1.0
+- **Microsoft Graph servicePrincipal addPassword** — https://learn.microsoft.com/en-us/graph/api/serviceprincipal-addpassword?view=graph-rest-1.0
+- **Microsoft Graph servicePrincipal appRoleAssignments** — https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-approleassignments?view=graph-rest-1.0
+- **Microsoft Graph federatedIdentityCredential resource** — https://learn.microsoft.com/en-us/graph/api/resources/federatedidentitycredential?view=graph-rest-beta
 - **Azure NSG Flow Logs overview** — https://learn.microsoft.com/en-us/azure/network-watcher/network-watcher-nsg-flow-logging-overview
 - **OCSF schema** — https://schema.ocsf.io/1.8.0/
 
