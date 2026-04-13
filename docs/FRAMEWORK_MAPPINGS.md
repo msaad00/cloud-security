@@ -32,6 +32,7 @@ from individual `SKILL.md` files.
 | Layer | Main frameworks |
 |---|---|
 | **ingestion/** | OCSF 1.8, vendor schemas, source-specific event contracts |
+| **discovery/** | MITRE ATT&CK, MITRE ATLAS, CycloneDX ML-BOM, NIST AI RMF, PCI / SOC 2 evidence support |
 | **detection/** | OCSF 1.8, MITRE ATT&CK, selective OWASP MCP mappings |
 | **evaluation/** | CIS, NIST CSF, ISO, SOC 2, PCI, MITRE ATLAS, OWASP LLM |
 | **view/** | OCSF 1.8, SARIF, Mermaid, MITRE ATT&CK labels |
@@ -64,6 +65,7 @@ ATLAS is present today, but coverage is narrower than ATT&CK.
 |---|---|
 | `discover-environment` | graph overlay for AI/ML resources and adversarial ML techniques |
 | `model-serving-security` | explicit ATLAS coverage in skill docs and checks |
+| `discover-ai-bom` | inventory artifact for future ATLAS / AI RMF evidence joins |
 
 Recommended expansion:
 - make ATLAS mappings more explicit in `gpu-cluster-security`
@@ -89,6 +91,7 @@ uniform than classic cloud posture.
 
 | Skill | Frameworks called out today |
 |---|---|
+| `discover-ai-bom` | CycloneDX ML-BOM, NIST AI RMF, MITRE ATLAS, PCI, SOC 2 |
 | `model-serving-security` | MITRE ATLAS, NIST CSF, OWASP LLM Top 10, SOC 2 |
 | `gpu-cluster-security` | MITRE ATT&CK, NIST CSF, CIS Controls, CIS Kubernetes |
 | `discover-environment` | MITRE ATT&CK, MITRE ATLAS, NIST CSF |
@@ -114,16 +117,14 @@ Recommended next step:
 
 ## AI BOM
 
-AI BOM is **not** the identity of the repo, but it fits naturally as one future
-capability in the discovery / inventory path.
+AI BOM is **not** the identity of the repo, but it is now a shipped discovery capability.
 
-Best fit:
-- **collection** in a future `discovery/` or `inventory/` family
-- **normalization** into OCSF-compatible inventory/context records where possible
-- **evaluation** against ATLAS, NIST AI RMF, OWASP LLM Top 10, and internal policy
+Current fit:
+- **collection / inventory input** in `discovery/`
+- **normalization** into a deterministic CycloneDX-aligned AI BOM artifact
+- **future evaluation joins** against ATLAS, NIST AI RMF, OWASP LLM Top 10, PCI, and SOC 2 evidence pipelines
 
-That keeps AI BOM as one important capability inside a broader cloud + AI
-security skills repo.
+That keeps AI BOM as one important capability inside a broader cloud + AI security skills repo.
 
 ## How to extend mappings safely
 

@@ -24,6 +24,10 @@ Skills are organised into layered categories. See [`skills/README.md`](skills/RE
 - `ingest-k8s-audit-ocsf`
 - `ingest-mcp-proxy-ocsf`
 
+**`discovery/`** (point-in-time inventory / graph / BOM)
+- `discover-environment`
+- `discover-ai-bom`
+
 **`detection/`** (OCSF → OCSF Detection Finding 2004 + MITRE)
 - `detect-mcp-tool-drift`
 - `detect-privilege-escalation-k8s`
@@ -38,7 +42,6 @@ Skills are organised into layered categories. See [`skills/README.md`](skills/RE
 - `container-security`
 - `model-serving-security`
 - `gpu-cluster-security`
-- `discover-environment`
 
 **`view/`** (OCSF export / rendering)
 - `convert-ocsf-to-sarif`

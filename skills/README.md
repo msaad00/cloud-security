@@ -5,6 +5,7 @@ Skills are grouped by **layered function**, not by vendor. An agent or operator 
 | Category | Question it answers | Output shape |
 |---|---|---|
 | [`ingestion/`](ingestion/) | "How do I normalize this raw source into OCSF?" | OCSF 1.8 JSONL |
+| [`discovery/`](discovery/) | "What does this cloud / AI estate look like right now?" | deterministic inventory / graph JSON |
 | [`detection/`](detection/) | "What attack pattern does this event stream show?" | OCSF Detection Finding (class 2004) |
 | [`evaluation/`](evaluation/) | "Does this posture or event stream meet a benchmark?" | Compliance / posture result |
 | [`view/`](view/) | "How should I render or export this OCSF output?" | SARIF, Mermaid, other review formats |
@@ -44,9 +45,18 @@ Deterministic OCSF-to-finding rules.
 
 Shared wire-contract docs and frozen fixtures live under [`detection-engineering/`](detection-engineering/). That folder is a shared-assets namespace, not a skill layer.
 
+## discovery/
+
+Read-only inventory, graph, and AI BOM skills.
+
+| Skill | Scope |
+|---|---|
+| [`discover-environment`](discovery/discover-environment/) | Multi-cloud discovery / graph overlay |
+| [`discover-ai-bom`](discovery/discover-ai-bom/) | AI asset inventory → CycloneDX-aligned AI BOM |
+
 ## evaluation/
 
-Read-only posture, benchmark, and environment evaluation skills.
+Read-only posture and benchmark evaluation skills.
 
 | Skill | Scope | Checks |
 |---|---|---:|
@@ -57,7 +67,6 @@ Read-only posture, benchmark, and environment evaluation skills.
 | [`container-security`](evaluation/container-security/) | Containers | 8 |
 | [`model-serving-security`](evaluation/model-serving-security/) | AI model serving | 16 |
 | [`gpu-cluster-security`](evaluation/gpu-cluster-security/) | GPU clusters | 13 |
-| [`discover-environment`](evaluation/discover-environment/) | Multi-cloud discovery / graph overlay | n/a |
 
 ## view/
 

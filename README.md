@@ -6,7 +6,7 @@
 [![OCSF 1.8](https://img.shields.io/badge/OCSF-1.8-22d3ee)](https://schema.ocsf.io/1.8.0)
 [![Scanned by agent-bom](https://img.shields.io/badge/scanned_by-agent--bom-164e63)](https://github.com/msaad00/agent-bom)
 
-**OCSF-native security skills for cloud and AI systems.** Normalise every source to **OCSF 1.8** on the wire, then compose ingest → detect → evaluate → view → remediate flows like Unix pipes. Built for direct CLI use, CI, serverless pipelines, and a thin local MCP wrapper. Read-only by default, least-privilege, zero-trust, closed-loop.
+**OCSF-native security skills for cloud and AI systems.** Normalise every source to **OCSF 1.8** on the wire, then compose ingest → discover → detect → evaluate → view → remediate flows like Unix pipes. Built for direct CLI use, CI, serverless pipelines, and a thin local MCP wrapper. Read-only by default, least-privilege, zero-trust, closed-loop.
 
 The repo is intentionally broader than CSPM: cloud security, container security, AI infra security, detection engineering, compliance evaluation, and future inventory/enrichment skills such as AI BOM generation all fit here as long as they stay deterministic, auditable, and grounded in official specs.
 
@@ -24,6 +24,7 @@ python skills/ingestion/ingest-k8s-audit-ocsf/src/ingest.py audit.log \
 | Layer | Role | Output |
 |---|---|---|
 | **Ingest** | Per-source raw log → OCSF | API / Network / HTTP / Application Activity |
+| **Discover** | point-in-time inventory / graph / AI BOM | deterministic JSON graph or CycloneDX-aligned BOM |
 | **Detect** | OCSF → finding + MITRE ATT&CK | Detection Finding (class 2004) |
 | **Evaluate** | OCSF → framework check | Compliance Finding (class 2003) — CIS / NIST / SOC 2 |
 | **View** | OCSF → SARIF / Mermaid / graph | GitHub Security tab, PR comments, dashboards |
@@ -91,6 +92,10 @@ skills/
 │   ├── ingest-k8s-audit-ocsf       K8s            → API Activity 6003
 │   └── ingest-mcp-proxy-ocsf       MCP            → Application Activity 6002
 │
+├── discovery/                      "Point-in-time inventory and graph evidence"
+│   ├── discover-environment                      → MITRE ATT&CK + ATLAS graph overlay
+│   └── discover-ai-bom                           → CycloneDX-aligned AI BOM
+│
 ├── detection/                      "What attack pattern does this event stream show?"
 │   ├── detect-lateral-movement                    → T1021 / T1078.004 cross-cloud pivot
 │   ├── detect-mcp-tool-drift                      → T1195.001 Supply Chain
@@ -104,8 +109,7 @@ skills/
 │   ├── k8s-security-benchmark      (CIS Kubernetes — 10 checks)
 │   ├── container-security          (CIS Docker — 8 checks)
 │   ├── model-serving-security      (16 checks — auth / rate limit / egress / safety)
-│   ├── gpu-cluster-security        (13 checks — runtime / driver / tenant isolation)
-│   └── discover-environment        (MITRE ATT&CK + ATLAS graph overlay)
+│   └── gpu-cluster-security        (13 checks — runtime / driver / tenant isolation)
 │
 ├── view/                           "OCSF → reviewable output"
 │   ├── convert-ocsf-to-sarif                      → GitHub Security tab
@@ -115,7 +119,7 @@ skills/
     └── iam-departures-remediation  (event-driven, DLQ + SNS, dual audit)
 ```
 
-**Roadmap:** current open issues focus on AWS Config and deeper evaluation coverage, richer MCP input schemas and transports, additional cloud and AI service coverage, vendor stories, and discovery / inventory follow-ons such as AI BOM generation.
+**Roadmap:** current open issues focus on AWS Config and deeper evaluation coverage, richer MCP input schemas and transports, additional cloud and AI service coverage, vendor stories, and deeper discovery / inventory follow-ons beyond the first AI BOM capability.
 
 </details>
 
@@ -180,7 +184,7 @@ This is a security tool. Trustworthiness is the first feature, not an afterthoug
 
 New skills land as standalone bundles. The checklist:
 
-1. **Pick a layer** — ingest, enrich, detect, evaluate, remediate, or convert
+1. **Pick a layer** — ingest, discover, enrich, detect, evaluate, remediate, or convert
 2. **Copy the nearest sibling** — the existing skills in the target category are the canonical reference layout
 3. **Ship the bundle** — `SKILL.md` with a `Do NOT use…` clause, `src/<entry>.py`, `tests/test_<entry>.py`, golden fixtures under `skills/detection-engineering/golden/` when the skill speaks OCSF, and `REFERENCES.md` listing every official doc the skill depends on
 4. **Add a row** to the [`SECURITY_BAR.md`](SECURITY_BAR.md) matrix

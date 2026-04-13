@@ -1,0 +1,451 @@
+"""Generate a deterministic AI BOM from cloud AI inventory snapshots."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import uuid
+from collections import defaultdict
+from copy import deepcopy
+from pathlib import Path
+from typing import Any
+
+SKILL_NAME = "discover-ai-bom"
+BOM_FORMAT = "CycloneDX"
+SPEC_VERSION = "1.7"
+SCHEMA_URL = "http://cyclonedx.org/schema/bom-1.7.schema.json"
+BOM_VERSION = 1
+SECRET_KEYWORDS = (
+    "authorization",
+    "client_secret",
+    "connection_string",
+    "credential",
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "access_key",
+)
+SERVICE_KINDS = {"deployment", "endpoint", "inference-endpoint", "vector-store"}
+COMPONENT_TYPES = {
+    "dataset": "data",
+    "guardrail": "application",
+    "model": "machine-learning-model",
+    "model-package": "machine-learning-model",
+    "runtime": "platform",
+    "training-job": "application",
+    "vector-index": "data",
+}
+KIND_ALIASES = {
+    "guardrails": "guardrail",
+    "model-package": "model-package",
+    "model-packages": "model-package",
+    "online-endpoint": "endpoint",
+    "online-endpoints": "endpoint",
+}
+
+
+def _warn(message: str) -> None:
+    print(f"warning: {message}", file=sys.stderr)
+
+
+def _load_json(path: str | None) -> dict[str, Any]:
+    if path:
+        return json.loads(Path(path).read_text())
+    return json.load(sys.stdin)
+
+
+def _secret_like(key: str) -> bool:
+    key = key.lower().replace("-", "_")
+    return any(fragment in key for fragment in SECRET_KEYWORDS)
+
+
+def _sanitize_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        cleaned: dict[str, Any] = {}
+        for key, child in value.items():
+            if _secret_like(key):
+                continue
+            sanitized = _sanitize_value(child)
+            if sanitized in (None, {}, []):
+                continue
+            cleaned[key] = sanitized
+        return cleaned
+    if isinstance(value, list):
+        cleaned_list = [_sanitize_value(item) for item in value]
+        return [item for item in cleaned_list if item not in (None, {}, [])]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _clean_dict(mapping: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in mapping.items() if value not in (None, "", [], {})}
+
+
+def _string(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _kind(value: str | None) -> str:
+    normalized = (value or "component").strip().lower()
+    return KIND_ALIASES.get(normalized, normalized)
+
+
+def _make_asset(**kwargs: Any) -> dict[str, Any]:
+    asset = _clean_dict({key: _sanitize_value(value) for key, value in kwargs.items()})
+    asset["kind"] = _kind(_string(asset.get("kind")))
+    if "dependencies" in asset:
+        deps = asset["dependencies"]
+        if not isinstance(deps, list):
+            raise ValueError("asset `dependencies` must be a list when provided")
+        asset["dependencies"] = sorted({_string(dep) for dep in deps if _string(dep)})
+    return asset
+
+
+def _asset_identity(asset: dict[str, Any]) -> str:
+    provider = _string(asset.get("provider")) or "unknown"
+    service = _string(asset.get("service")) or "unknown"
+    kind = _kind(_string(asset.get("kind")))
+    identifier = _string(asset.get("id")) or _string(asset.get("name"))
+    if not identifier:
+        raise ValueError("asset must include at least one of `id` or `name`")
+    return f"{provider}:{service}:{kind}:{identifier}"
+
+
+def _normalize_assets(document: dict[str, Any]) -> list[dict[str, Any]]:
+    if isinstance(document.get("assets"), list):
+        assets = [_make_asset(**asset) for asset in document["assets"]]
+    else:
+        assets = []
+        assets.extend(_normalize_aws(document))
+        assets.extend(_normalize_gcp(document))
+        assets.extend(_normalize_azure(document))
+
+    if not assets:
+        raise ValueError("inventory must include `assets[]` or at least one supported provider snapshot")
+
+    deduped: dict[str, dict[str, Any]] = {}
+    for asset in assets:
+        identity = _asset_identity(asset)
+        if identity in deduped:
+            merged = deepcopy(deduped[identity])
+            for key, value in asset.items():
+                if key == "dependencies":
+                    merged[key] = sorted(set(merged.get(key, [])) | set(value))
+                    continue
+                if key not in merged or merged[key] in (None, "", [], {}):
+                    merged[key] = value
+            deduped[identity] = merged
+        else:
+            deduped[identity] = asset
+
+    return sorted(deduped.values(), key=_asset_identity)
+
+
+def _normalize_aws(document: dict[str, Any]) -> list[dict[str, Any]]:
+    assets: list[dict[str, Any]] = []
+    provider = (document.get("provider") or "aws").lower()
+    sagemaker = document.get("sagemaker", {}) or {}
+    bedrock = document.get("bedrock", {}) or {}
+
+    for package in sagemaker.get("model_packages", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="sagemaker",
+                kind="model-package",
+                id=package.get("ModelPackageArn"),
+                name=package.get("ModelPackageName") or package.get("ModelPackageGroupName"),
+                version=package.get("ModelPackageVersion"),
+                status=package.get("ModelApprovalStatus"),
+                region=package.get("Region"),
+            )
+        )
+
+    for endpoint in sagemaker.get("endpoints", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="sagemaker",
+                kind="endpoint",
+                id=endpoint.get("EndpointArn"),
+                name=endpoint.get("EndpointName"),
+                status=endpoint.get("EndpointStatus"),
+                region=endpoint.get("Region"),
+                dependencies=[endpoint.get("ModelPackageArn"), endpoint.get("ModelArn")],
+            )
+        )
+
+    for model in bedrock.get("custom_models", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="bedrock",
+                kind="model",
+                id=model.get("modelArn"),
+                name=model.get("modelName"),
+                version=model.get("modelArn"),
+                status=model.get("modelStatus"),
+                dependencies=[model.get("baseModelArn"), model.get("foundationModelArn")],
+            )
+        )
+
+    for guardrail in bedrock.get("guardrails", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="bedrock",
+                kind="guardrail",
+                id=guardrail.get("id") or guardrail.get("guardrailArn"),
+                name=guardrail.get("name"),
+                version=guardrail.get("version"),
+                status=guardrail.get("status"),
+            )
+        )
+
+    return assets
+
+
+def _normalize_gcp(document: dict[str, Any]) -> list[dict[str, Any]]:
+    assets: list[dict[str, Any]] = []
+    provider = (document.get("provider") or "gcp").lower()
+    vertex = document.get("vertex_ai", {}) or {}
+
+    for model in vertex.get("models", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="vertex-ai",
+                kind="model",
+                id=model.get("name"),
+                name=model.get("displayName") or model.get("name"),
+                version=model.get("versionId"),
+                region=model.get("region"),
+                labels=model.get("labels"),
+            )
+        )
+
+    for endpoint in vertex.get("endpoints", []):
+        deployed_models = endpoint.get("deployedModels", [])
+        deps = [item.get("model") for item in deployed_models if item.get("model")]
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="vertex-ai",
+                kind="endpoint",
+                id=endpoint.get("name"),
+                name=endpoint.get("displayName") or endpoint.get("name"),
+                region=endpoint.get("region"),
+                dependencies=deps,
+                labels=endpoint.get("labels"),
+            )
+        )
+
+    return assets
+
+
+def _normalize_azure(document: dict[str, Any]) -> list[dict[str, Any]]:
+    assets: list[dict[str, Any]] = []
+    provider = (document.get("provider") or "azure").lower()
+    aml = document.get("azure_ml", {}) or {}
+
+    for model in aml.get("models", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="azure-ml",
+                kind="model",
+                id=model.get("id"),
+                name=model.get("name"),
+                version=model.get("version"),
+                labels=model.get("tags"),
+            )
+        )
+
+    for endpoint in aml.get("online_endpoints", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="azure-ml",
+                kind="endpoint",
+                id=endpoint.get("id") or endpoint.get("name"),
+                name=endpoint.get("name"),
+                status=endpoint.get("provisioning_state") or endpoint.get("auth_mode"),
+                dependencies=[deployment.get("id") for deployment in endpoint.get("deployments", [])],
+                labels=endpoint.get("tags"),
+            )
+        )
+
+    for deployment in aml.get("deployments", []):
+        assets.append(
+            _make_asset(
+                provider=provider,
+                service="azure-ml",
+                kind="deployment",
+                id=deployment.get("id") or deployment.get("name"),
+                name=deployment.get("name"),
+                version=deployment.get("version"),
+                dependencies=[deployment.get("model"), deployment.get("endpoint_name")],
+            )
+        )
+
+    return assets
+
+
+def _property_items(asset: dict[str, Any]) -> list[dict[str, str]]:
+    props: dict[str, str] = {}
+    for key in ("provider", "service", "kind", "region", "framework", "runtime", "status", "sensitivity", "owner"):
+        value = _string(asset.get(key))
+        if value:
+            props[f"cloud-security:{key}"] = value
+
+    for parent_key in ("labels", "tags", "properties"):
+        mapping = asset.get(parent_key)
+        if isinstance(mapping, dict):
+            for key, value in mapping.items():
+                if _secret_like(key):
+                    _warn(f"dropped secret-like property `{key}` from asset `{asset.get('name') or asset.get('id')}`")
+                    continue
+                rendered = _string(value)
+                if rendered:
+                    props[f"cloud-security:{parent_key}.{key}"] = rendered
+
+    return [{"name": key, "value": props[key]} for key in sorted(props)]
+
+
+def _bom_ref(asset: dict[str, Any]) -> str:
+    return _asset_identity(asset)
+
+
+def _to_component(asset: dict[str, Any]) -> dict[str, Any]:
+    component_type = COMPONENT_TYPES.get(asset["kind"], "application")
+    return _clean_dict(
+        {
+            "type": component_type,
+            "bom-ref": _bom_ref(asset),
+            "name": _string(asset.get("name")) or _string(asset.get("id")),
+            "version": _string(asset.get("version")) or "unspecified",
+            "group": f"{asset['provider']}/{asset['service']}",
+            "description": _string(asset.get("description")),
+            "properties": _property_items(asset),
+        }
+    )
+
+
+def _to_service(asset: dict[str, Any]) -> dict[str, Any]:
+    return _clean_dict(
+        {
+            "bom-ref": _bom_ref(asset),
+            "name": _string(asset.get("name")) or _string(asset.get("id")),
+            "group": f"{asset['provider']}/{asset['service']}",
+            "description": _string(asset.get("description")),
+            "endpoints": [_string(asset.get("endpoint_url"))] if _string(asset.get("endpoint_url")) else None,
+            "properties": _property_items(asset),
+        }
+    )
+
+
+def _metadata_properties(document: dict[str, Any], assets: list[dict[str, Any]]) -> list[dict[str, str]]:
+    counts = defaultdict(int)
+    for asset in assets:
+        counts[f"cloud-security:count.{asset['provider']}.{asset['kind']}"] += 1
+
+    props = {
+        "cloud-security:inventory.kind": "ai-bom",
+        "cloud-security:inventory.asset_count": str(len(assets)),
+    }
+    collected_at = _string(document.get("collected_at"))
+    if collected_at:
+        props["cloud-security:inventory.collected_at"] = collected_at
+    inventory_id = _string(document.get("inventory_id"))
+    if inventory_id:
+        props["cloud-security:inventory.id"] = inventory_id
+    for key, value in counts.items():
+        props[key] = str(value)
+    return [{"name": key, "value": props[key]} for key in sorted(props)]
+
+
+def _serial_number(document: dict[str, Any], assets: list[dict[str, Any]]) -> str:
+    seed = {
+        "inventory_id": document.get("inventory_id"),
+        "collected_at": document.get("collected_at"),
+        "assets": assets,
+    }
+    canonical = json.dumps(seed, sort_keys=True, separators=(",", ":"))
+    return f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, canonical)}"
+
+
+def build_bom(document: dict[str, Any]) -> dict[str, Any]:
+    assets = _normalize_assets(document)
+    components: list[dict[str, Any]] = []
+    services: list[dict[str, Any]] = []
+
+    for asset in assets:
+        if asset["kind"] in SERVICE_KINDS:
+            services.append(_to_service(asset))
+        else:
+            components.append(_to_component(asset))
+
+    dependencies = []
+    for asset in assets:
+        refs = [_string(dep) for dep in asset.get("dependencies", []) if _string(dep)]
+        if refs:
+            dependencies.append({"ref": _bom_ref(asset), "dependsOn": sorted(set(refs))})
+
+    bom = {
+        "$schema": SCHEMA_URL,
+        "bomFormat": BOM_FORMAT,
+        "specVersion": SPEC_VERSION,
+        "serialNumber": _serial_number(document, assets),
+        "version": BOM_VERSION,
+        "metadata": _clean_dict(
+            {
+                "timestamp": _string(document.get("collected_at")),
+                "component": {
+                    "type": "platform",
+                    "name": SKILL_NAME,
+                    "version": "0.1.0",
+                },
+                "properties": _metadata_properties(document, assets),
+            }
+        ),
+        "components": sorted(components, key=lambda item: item["bom-ref"]),
+        "services": sorted(services, key=lambda item: item["bom-ref"]),
+        "dependencies": sorted(dependencies, key=lambda item: item["ref"]),
+    }
+    return bom
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate a deterministic AI BOM from AI asset inventory snapshots.")
+    parser.add_argument("input", nargs="?", help="Path to the inventory JSON file. Reads stdin when omitted.")
+    parser.add_argument("-o", "--output", help="Write BOM JSON to this path instead of stdout.")
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print the BOM JSON.")
+    args = parser.parse_args(argv)
+
+    try:
+        document = _load_json(args.input)
+        bom = build_bom(document)
+    except Exception as exc:  # pragma: no cover - CLI error path
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    payload = json.dumps(bom, indent=2 if args.pretty else None, sort_keys=args.pretty)
+    if args.pretty:
+        payload += "\n"
+
+    if args.output:
+        Path(args.output).write_text(payload)
+    else:
+        sys.stdout.write(payload)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

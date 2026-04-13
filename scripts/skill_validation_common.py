@@ -26,6 +26,7 @@ OFFICIAL_REFERENCE_HOSTS = {
     "boto3.amazonaws.com",
     "clickhouse.com",
     "cloud.google.com",
+    "cyclonedx.org",
     "community.workday.com",
     "datatracker.ietf.org",
     "developers.google.com",
