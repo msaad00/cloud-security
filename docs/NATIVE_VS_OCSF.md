@@ -135,7 +135,9 @@ Implemented dual-mode skills today:
 
 - `ingest-cloudtrail-ocsf`
 - `ingest-vpc-flow-logs-ocsf`
+- `ingest-k8s-audit-ocsf`
 - `detect-lateral-movement`
+- `detect-sensitive-secret-read-k8s`
 
 Implemented native-first with bridge skills today:
 

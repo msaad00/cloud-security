@@ -54,6 +54,25 @@ def _event(
     }
 
 
+def _native_event(
+    *,
+    verb: str = "get",
+    secret_name: str = "aws-access-key",
+    namespace: str = "default",
+    actor: str = "system:serviceaccount:default:app",
+    time_ms: int = 1775797200000,
+) -> dict:
+    return {
+        "schema_mode": "native",
+        "record_type": "api_activity",
+        "provider": "Kubernetes",
+        "time_ms": time_ms,
+        "actor_name": actor,
+        "operation": verb,
+        "resources": [{"type": "secrets", "name": secret_name, "namespace": namespace}],
+    }
+
+
 # ── Pattern matching ─────────────────────────────────────────────────
 
 
@@ -182,6 +201,23 @@ class TestFindingShape:
         b = list(detect(events))[0]["finding_info"]["uid"]
         assert a == b
         assert a.startswith("det-k8s-secret-read-")
+
+    def test_native_input_can_emit_native_finding(self):
+        findings = list(detect([_native_event()], output_format="native"))
+        assert len(findings) == 1
+        finding = findings[0]
+        assert finding["schema_mode"] == "native"
+        assert finding["record_type"] == "detection_finding"
+        assert finding["provider"] == "Kubernetes"
+        assert finding["rule_name"] == "k8s-sensitive-secret-read"
+        assert "class_uid" not in finding
+
+    def test_native_input_can_emit_ocsf_finding(self):
+        findings = list(detect([_native_event()], output_format="ocsf"))
+        assert len(findings) == 1
+        finding = findings[0]
+        assert finding["class_uid"] == FINDING_CLASS_UID
+        assert finding["finding_info"]["uid"].startswith("det-k8s-secret-read-")
 
 
 # ── Idempotency / dedup ──────────────────────────────────────────────

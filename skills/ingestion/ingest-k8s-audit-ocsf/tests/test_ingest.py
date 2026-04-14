@@ -24,6 +24,7 @@ from ingest import (  # type: ignore[import-not-found]
     STATUS_UNKNOWN,
     _status_id_and_detail,
     convert_event,
+    convert_event_native,
     infer_activity_id,
     ingest,
     is_service_account,
@@ -241,6 +242,16 @@ class TestConvertEvent:
         e = convert_event(self._event(annotations={"authorization.k8s.io/decision": "forbid"}))
         assert "authz-deny" in e["metadata"]["labels"]
 
+    def test_native_output_keeps_canonical_fields_without_ocsf_envelope(self):
+        e = convert_event_native(self._event())
+        assert e["schema_mode"] == "native"
+        assert e["record_type"] == "api_activity"
+        assert e["provider"] == "Kubernetes"
+        assert e["service_name"] == "kubernetes"
+        assert e["output_format"] == "native"
+        assert "class_uid" not in e
+        assert "metadata" not in e
+
 
 # ── Golden fixture parity ──────────────────────────────────────────────
 
@@ -250,6 +261,15 @@ class TestGoldenFixture:
         # Fixture has 6 entries but 1 is RequestReceived (must be skipped)
         produced = list(ingest(RAW_FIXTURE.read_text().splitlines()))
         assert len(produced) == 5
+
+    def test_native_output_mode_emits_enriched_events(self):
+        produced = list(ingest(RAW_FIXTURE.read_text().splitlines(), output_format="native"))
+        assert len(produced) == 5
+        first = produced[0]
+        assert first["schema_mode"] == "native"
+        assert first["record_type"] == "api_activity"
+        assert "class_uid" not in first
+        assert "metadata" not in first
 
     def test_deep_equality(self):
         produced = list(ingest(RAW_FIXTURE.read_text().splitlines()))

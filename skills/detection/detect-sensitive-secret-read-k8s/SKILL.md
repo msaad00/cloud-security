@@ -21,8 +21,8 @@ license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
 side_effects: none
-input_formats: ocsf
-output_formats: ocsf
+input_formats: native, ocsf
+output_formats: native, ocsf
 ---
 
 # detect-sensitive-secret-read-k8s
@@ -68,13 +68,40 @@ The full pattern list lives in `src/detect.py` as the `SENSITIVE_NAME_PATTERNS` 
 
 ## Output contract
 
-One OCSF Detection Finding (class `2004`) per `(actor, namespace, secret_name)` match. Populates:
+One OCSF Detection Finding (class `2004`) per `(actor, namespace, secret_name)` match by default. Populates:
 
 - `finding_info.attacks[]` — MITRE ATT&CK v14, tactic TA0006 (Credential Access), technique T1552 (Unsecured Credentials), sub-technique T1552.007 (Container API)
 - `finding_info.types[]` — `["k8s-sensitive-secret-read"]`
 - `finding_info.uid` — deterministic (`det-k8s-secret-read-<actor-hash>-<secret-hash>`)
 - `observables[]` — actor.name, namespace, secret.name, matched_patterns
 - `severity_id` — 4 (High)
+
+## Native output format
+
+`--output-format native` emits one native detection-finding record per match with:
+
+- `schema_mode`
+- `record_type`
+- `finding_uid`
+- `event_uid`
+- `provider`
+- `time_ms`
+- `severity`
+- `severity_id`
+- `status`
+- `status_id`
+- `title`
+- `description`
+- `finding_types`
+- `first_seen_time_ms`
+- `last_seen_time_ms`
+- `mitre_attacks`
+- `actor_name`
+- `namespace`
+- `secret_name`
+- `matched_patterns`
+- `verb`
+- `rule_name`
 
 ## Usage
 
@@ -83,6 +110,11 @@ One OCSF Detection Finding (class `2004`) per `(actor, namespace, secret_name)` 
 python ../ingest-k8s-audit-ocsf/src/ingest.py audit.log \
   | python src/detect.py \
   > findings.ocsf.jsonl
+
+# Native end-to-end path
+python ../ingest-k8s-audit-ocsf/src/ingest.py --output-format native audit.log \
+  | python src/detect.py --output-format native \
+  > findings.native.jsonl
 
 # With custom patterns
 python ../ingest-k8s-audit-ocsf/src/ingest.py audit.log \

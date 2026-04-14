@@ -1,8 +1,9 @@
-"""Convert raw Kubernetes audit logs to OCSF 1.8 API Activity (class 6003).
+"""Convert raw Kubernetes audit logs to API activity events.
 
 Input:  K8s audit.k8s.io/v1 Event objects — either JSONL (one per line) or a
         top-level array. The skill filters for ResponseComplete / Panic stages.
-Output: JSONL of OCSF 1.8 API Activity events.
+Output: JSONL of OCSF 1.8 API Activity events by default, or a documented
+        native enriched event shape when --output-format native is selected.
 
 Contract: see ../OCSF_CONTRACT.md
 """
@@ -18,6 +19,7 @@ from typing import Any, Iterable
 
 SKILL_NAME = "ingest-k8s-audit-ocsf"
 OCSF_VERSION = "1.8.0"
+CANONICAL_VERSION = "2026-04"
 
 CLASS_UID = 6003
 CLASS_NAME = "API Activity"
@@ -36,6 +38,7 @@ STATUS_SUCCESS = 1
 STATUS_FAILURE = 2
 
 SEVERITY_INFORMATIONAL = 1
+OUTPUT_FORMATS = ("ocsf", "native")
 
 TERMINAL_STAGES = {"ResponseComplete", "Panic"}
 K8S_API_GROUP = "audit.k8s.io/v1"
@@ -232,18 +235,31 @@ def _metadata_labels(entry: dict[str, Any]) -> list[str]:
     return labels
 
 
+def _activity_name(activity_id: int) -> str:
+    return {
+        ACTIVITY_CREATE: "create",
+        ACTIVITY_READ: "read",
+        ACTIVITY_UPDATE: "update",
+        ACTIVITY_DELETE: "delete",
+        ACTIVITY_OTHER: "other",
+    }.get(activity_id, "unknown")
+
+
+def _status_name(status_id: int) -> str:
+    return {
+        STATUS_SUCCESS: "success",
+        STATUS_FAILURE: "failure",
+        STATUS_UNKNOWN: "unknown",
+    }.get(status_id, "unknown")
+
+
 # ---------------------------------------------------------------------------
 # Event builder
 # ---------------------------------------------------------------------------
 
 
-def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
-    """Convert one K8s audit Event to one OCSF API Activity event.
-
-    Returns None if the entry is not an audit Event or is not in a terminal
-    stage (i.e. RequestReceived / ResponseStarted — we wait for the full
-    response to land before emitting).
-    """
+def _build_canonical_event(entry: dict[str, Any]) -> dict[str, Any] | None:
+    """Convert one K8s audit Event into the repo's canonical event shape."""
     if entry.get("kind") != "Event":
         return None
     if entry.get("apiVersion") != K8S_API_GROUP:
@@ -270,6 +286,47 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
         ).encode("utf-8")
     ).hexdigest()
 
+    canonical: dict[str, Any] = {
+        "schema_mode": "canonical",
+        "canonical_schema_version": CANONICAL_VERSION,
+        "record_type": "api_activity",
+        "event_uid": metadata_uid,
+        "provider": "Kubernetes",
+        "account_uid": "",
+        "region": "",
+        "time_ms": parse_ts_ms(entry.get("requestReceivedTimestamp")),
+        "activity_id": activity_id,
+        "activity_name": _activity_name(activity_id),
+        "status_id": status_id,
+        "status": _status_name(status_id),
+        "operation": verb.lower(),
+        "service_name": "kubernetes",
+        "actor": _build_actor(entry),
+        "src": _build_src_endpoint(entry),
+        "resources": _build_resources(entry),
+        "source": {
+            "kind": "kubernetes.audit",
+            "audit_id": entry.get("auditID", ""),
+            "stage": entry.get("stage", ""),
+            "request_uri": entry.get("requestURI", ""),
+            "api_version": entry.get("apiVersion", ""),
+        },
+        "metadata_labels": _metadata_labels(entry),
+    }
+
+    if status_detail:
+        canonical["status_detail"] = status_detail
+
+    # Service-account namespace as a custom marker for downstream detectors.
+    sa_ns = service_account_namespace(((entry.get("user") or {}).get("username")) or "")
+    if sa_ns is not None:
+        canonical["k8s"] = {"service_account_namespace": sa_ns}
+
+    return canonical
+
+
+def _render_ocsf_event(canonical: dict[str, Any]) -> dict[str, Any]:
+    activity_id = int(canonical["activity_id"])
     event: dict[str, Any] = {
         "activity_id": activity_id,
         "category_uid": CATEGORY_UID,
@@ -278,34 +335,58 @@ def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
         "class_name": CLASS_NAME,
         "type_uid": CLASS_UID * 100 + activity_id,
         "severity_id": SEVERITY_INFORMATIONAL,
-        "status_id": status_id,
-        "time": parse_ts_ms(entry.get("requestReceivedTimestamp")),
+        "status_id": int(canonical["status_id"]),
+        "time": canonical["time_ms"],
         "metadata": {
             "version": OCSF_VERSION,
-            "uid": metadata_uid,
+            "uid": canonical["event_uid"],
             "product": {
                 "name": "cloud-ai-security-skills",
                 "vendor_name": "msaad00/cloud-ai-security-skills",
                 "feature": {"name": SKILL_NAME},
             },
-            "labels": _metadata_labels(entry),
+            "labels": canonical["metadata_labels"],
         },
-        "actor": _build_actor(entry),
-        "src_endpoint": _build_src_endpoint(entry),
-        "api": _build_api(entry),
-        "resources": _build_resources(entry),
+        "actor": canonical["actor"],
+        "src_endpoint": canonical["src"],
+        "api": {
+            "operation": canonical["operation"],
+            "service": {"name": canonical["service_name"]},
+            "request": {"uid": canonical["source"]["audit_id"]},
+        },
+        "resources": canonical["resources"],
         "cloud": _build_cloud(),
     }
-
-    if status_detail:
-        event["status_detail"] = status_detail
-
-    # Service-account namespace as a custom marker for downstream detectors.
-    sa_ns = service_account_namespace(((entry.get("user") or {}).get("username")) or "")
-    if sa_ns is not None:
-        event["k8s"] = {"service_account_namespace": sa_ns}
-
+    if canonical.get("status_detail"):
+        event["status_detail"] = canonical["status_detail"]
+    if canonical.get("k8s"):
+        event["k8s"] = canonical["k8s"]
     return event
+
+
+def _render_native_event(canonical: dict[str, Any]) -> dict[str, Any]:
+    native = dict(canonical)
+    native.pop("metadata_labels", None)
+    native["schema_mode"] = "native"
+    native["source_skill"] = SKILL_NAME
+    native["output_format"] = "native"
+    return native
+
+
+def convert_event(entry: dict[str, Any]) -> dict[str, Any] | None:
+    """Convert one K8s audit Event to one OCSF API Activity event."""
+    canonical = _build_canonical_event(entry)
+    if canonical is None:
+        return None
+    return _render_ocsf_event(canonical)
+
+
+def convert_event_native(entry: dict[str, Any]) -> dict[str, Any] | None:
+    """Convert one K8s audit Event to the repo's native enriched event shape."""
+    canonical = _build_canonical_event(entry)
+    if canonical is None:
+        return None
+    return _render_native_event(canonical)
 
 
 # ---------------------------------------------------------------------------
@@ -351,29 +432,33 @@ def iter_raw_entries(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
             print(f"[{SKILL_NAME}] skipping line {lineno}: not a JSON object", file=sys.stderr)
 
 
-def ingest(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
+def ingest(stream: Iterable[str], output_format: str = "ocsf") -> Iterable[dict[str, Any]]:
     for raw in iter_raw_entries(stream):
         try:
-            event = convert_event(raw)
+            canonical = _build_canonical_event(raw)
         except Exception as e:
             print(f"[{SKILL_NAME}] skipping entry: convert error: {e}", file=sys.stderr)
             continue
-        if event is None:
+        if canonical is None:
             continue
-        yield event
+        if output_format == "native":
+            yield _render_native_event(canonical)
+        else:
+            yield _render_ocsf_event(canonical)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Convert raw K8s audit logs to OCSF 1.8 API Activity JSONL.")
     parser.add_argument("input", nargs="?", help="Input JSON/JSONL file. Defaults to stdin.")
     parser.add_argument("--output", "-o", help="Output JSONL file. Defaults to stdout.")
+    parser.add_argument("--output-format", choices=OUTPUT_FORMATS, default="ocsf", help="Render OCSF events or the native enriched event shape.")
     args = parser.parse_args(argv)
 
     in_stream = sys.stdin if not args.input else open(args.input, "r", encoding="utf-8")
     out_stream = sys.stdout if not args.output else open(args.output, "w", encoding="utf-8")
 
     try:
-        for event in ingest(in_stream):
+        for event in ingest(in_stream, output_format=args.output_format):
             out_stream.write(json.dumps(event, separators=(",", ":")) + "\n")
     finally:
         if args.input:
