@@ -21,12 +21,12 @@ approval_model: none
 execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
-output_formats: ocsf
+output_formats: native, ocsf
 ---
 
 # ingest-k8s-audit-ocsf
 
-Thin, single-purpose ingestion skill: raw Kubernetes audit logs in → OCSF 1.8 API Activity JSONL out. No detection logic, no K8s API calls, no side effects.
+Thin, single-purpose ingestion skill: raw Kubernetes audit logs in → OCSF 1.8 API Activity JSONL out by default, with an optional native enriched event shape when `--output-format native` is selected. No detection logic, no K8s API calls, no side effects.
 
 ## Wire contract
 
@@ -59,7 +59,9 @@ Reads the `audit.k8s.io/v1` `Event` object that `kube-apiserver` writes to its a
 }
 ```
 
-Writes OCSF 1.8 **API Activity** (`class_uid: 6003`, `category_uid: 6`).
+Writes OCSF 1.8 **API Activity** (`class_uid: 6003`, `category_uid: 6`) by default.
+With `--output-format native`, writes the repo's native enriched API activity
+shape instead of the OCSF envelope.
 
 ## activity_id inference
 
@@ -118,7 +120,35 @@ python src/ingest.py /var/log/k8s-audit.log > k8s-audit.ocsf.jsonl
 # Piped from a dynamic webhook sink
 kubectl logs -n kube-system audit-webhook-receiver \
   | python src/ingest.py
+
+# Native enriched output (same source truth, no OCSF envelope)
+python src/ingest.py --output-format native /var/log/k8s-audit.log > k8s-audit.native.jsonl
 ```
+
+## Native output format
+
+`--output-format native` emits one enriched event per accepted audit entry with:
+
+- `schema_mode`
+- `canonical_schema_version`
+- `record_type`
+- `event_uid`
+- `provider`
+- `account_uid`
+- `region`
+- `time_ms`
+- `activity_id`
+- `activity_name`
+- `status_id`
+- `status`
+- `status_detail` when present
+- `operation`
+- `service_name`
+- `actor`
+- `src`
+- `resources`
+- `source`
+- `k8s.service_account_namespace` when the actor is a service account
 
 ## Tests
 

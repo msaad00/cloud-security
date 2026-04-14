@@ -30,6 +30,7 @@ The format is loosely based on Keep a Changelog.
 - Reframed the repo contract so OCSF remains a first-class interoperability option, but not a mandatory storage or execution model; the stable internal contract is now explicitly source truth -> canonical model -> `native` / `ocsf` / `bridge` output.
 - Made the OCSF metadata validator format-aware so native-mode support does not weaken the OCSF path contract.
 - Extended the native/OCSF pilot to `ingest-vpc-flow-logs-ocsf`, so AWS flow logs can now emit either OCSF Network Activity or the repo's canonical native network-flow shape while preserving a compatible end-to-end lateral-movement path.
+- Extended the native/OCSF pilot to `ingest-k8s-audit-ocsf` and `detect-sensitive-secret-read-k8s`, so Kubernetes audit ingestion and one Kubernetes detector now support the same dual-mode rollout pattern as the earlier CloudTrail / VPC / lateral-movement pilots.
 - Made the README honest about current schema-mode rollout, required `input_formats` / `output_formats` for every shipped skill, and documented the native output fields on the currently dual-mode skills.
 
 ### Added
