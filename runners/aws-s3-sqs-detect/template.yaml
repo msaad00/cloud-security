@@ -1,0 +1,166 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Reference runner for S3 -> ingest Lambda -> SQS -> detect Lambda -> DynamoDB dedupe -> SNS
+
+Parameters:
+  SourceBucketName:
+    Type: String
+    Description: Existing S3 bucket that receives raw objects for the ingest Lambda
+  IngestCodeBucket:
+    Type: String
+  IngestCodeKey:
+    Type: String
+  DetectCodeBucket:
+    Type: String
+  DetectCodeKey:
+    Type: String
+  IngestSkillCommand:
+    Type: String
+    Description: Command run by the ingest Lambda, for example `python skills/ingestion/ingest-cloudtrail-ocsf/src/ingest.py --output-format native`
+  DetectSkillCommand:
+    Type: String
+    Description: Command run by the detect Lambda, for example `python skills/detection/detect-lateral-movement/src/detect.py --output-format native`
+
+Resources:
+  DetectQueueDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+
+  DetectQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DetectQueueDlq.Arn
+        maxReceiveCount: 5
+
+  DedupeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expires_at
+        Enabled: false
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+
+  IngestRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ingest-runner
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${SourceBucketName}/*
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt DetectQueue.Arn
+
+  DetectRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: detect-runner
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt DedupeTable.Arn
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref AlertsTopic
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt DetectQueue.Arn
+
+  IngestFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Timeout: 300
+      Handler: ingest_handler.lambda_handler
+      Role: !GetAtt IngestRole.Arn
+      Code:
+        S3Bucket: !Ref IngestCodeBucket
+        S3Key: !Ref IngestCodeKey
+      Environment:
+        Variables:
+          INGEST_SKILL_CMD: !Ref IngestSkillCommand
+          DETECT_QUEUE_URL: !Ref DetectQueue
+
+  DetectFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Timeout: 300
+      Handler: detect_handler.lambda_handler
+      Role: !GetAtt DetectRole.Arn
+      Code:
+        S3Bucket: !Ref DetectCodeBucket
+        S3Key: !Ref DetectCodeKey
+      Environment:
+        Variables:
+          DETECT_SKILL_CMD: !Ref DetectSkillCommand
+          DEDUPE_TABLE: !Ref DedupeTable
+          SNS_TOPIC_ARN: !Ref AlertsTopic
+
+  IngestInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref IngestFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::${SourceBucketName}
+
+  DetectEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      EventSourceArn: !GetAtt DetectQueue.Arn
+      FunctionName: !Ref DetectFunction
+
+Outputs:
+  SourceBucketName:
+    Value: !Ref SourceBucketName
+  DetectQueueUrl:
+    Value: !Ref DetectQueue
+  AlertsTopicArn:
+    Value: !Ref AlertsTopic
+  DedupeTableName:
+    Value: !Ref DedupeTable

@@ -48,6 +48,10 @@ OCSF_METADATA = _load_module(
     "cloud_security_validate_ocsf_metadata_test",
     SCRIPTS / "validate_ocsf_metadata.py",
 )
+TEST_COVERAGE = _load_module(
+    "cloud_security_validate_test_coverage_test",
+    SCRIPTS / "validate_test_coverage.py",
+)
 
 
 class TestSkillValidationCommon:
@@ -105,6 +109,76 @@ class TestValidationScripts:
 
     def test_ocsf_metadata_validator_passes(self):
         assert OCSF_METADATA.main() == 0
+
+    def test_test_coverage_validator_passes(self, tmp_path: Path):
+        report = tmp_path / "coverage.xml"
+        report.write_text(
+            """<?xml version="1.0" ?>
+<coverage line-rate="0.82">
+  <packages>
+    <package name="skills">
+      <classes>
+        <class filename="skills/detection/example/src/detect.py">
+          <lines>
+            <line number="1" hits="1" />
+            <line number="2" hits="1" />
+            <line number="3" hits="1" />
+            <line number="4" hits="1" />
+            <line number="5" hits="0" />
+          </lines>
+        </class>
+        <class filename="skills/evaluation/example/src/checks.py">
+          <lines>
+            <line number="1" hits="1" />
+            <line number="2" hits="1" />
+            <line number="3" hits="1" />
+            <line number="4" hits="0" />
+            <line number="5" hits="0" />
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
+""",
+            encoding="utf-8",
+        )
+        assert TEST_COVERAGE.main([str(report)]) == 0
+
+    def test_test_coverage_validator_fails_low_detection_floor(self, tmp_path: Path):
+        report = tmp_path / "coverage-low.xml"
+        report.write_text(
+            """<?xml version="1.0" ?>
+<coverage line-rate="0.82">
+  <packages>
+    <package name="skills">
+      <classes>
+        <class filename="skills/detection/example/src/detect.py">
+          <lines>
+            <line number="1" hits="1" />
+            <line number="2" hits="1" />
+            <line number="3" hits="1" />
+            <line number="4" hits="0" />
+            <line number="5" hits="0" />
+          </lines>
+        </class>
+        <class filename="skills/evaluation/example/src/checks.py">
+          <lines>
+            <line number="1" hits="1" />
+            <line number="2" hits="1" />
+            <line number="3" hits="1" />
+            <line number="4" hits="0" />
+            <line number="5" hits="0" />
+          </lines>
+        </class>
+      </classes>
+    </package>
+  </packages>
+</coverage>
+""",
+            encoding="utf-8",
+        )
+        assert TEST_COVERAGE.main([str(report)]) == 1
 
     def test_gpu_skill_ai_framework_depth_is_registered(self):
         registry = json.loads((ROOT / "docs" / "framework-coverage.json").read_text())

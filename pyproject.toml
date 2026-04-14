@@ -12,6 +12,7 @@ package = false
 [dependency-groups]
 dev = [
   "bandit[toml]>=1.9.4,<2",
+  "defusedxml>=0.7.1,<1",
   "moto>=5,<6",
   "mypy>=1.11,<2",
   "pip-audit>=2.7,<3",
@@ -59,7 +60,7 @@ exclude_dirs = ["tests", ".venv", ".git", "__pycache__"]
 skips = ["B101"]
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -q --cov=skills --cov-report=term-missing --cov-report=xml --cov-fail-under=35"
+addopts = "--import-mode=importlib -q"
 testpaths = ["skills"]
 python_files = "test_*.py"
 python_classes = "Test*"

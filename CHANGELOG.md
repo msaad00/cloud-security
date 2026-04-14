@@ -36,6 +36,8 @@ The format is loosely based on Keep a Changelog.
 - expanded the vendor icon asset set with Okta plus Microsoft Entra and Google Workspace stand-ins so the visual system can represent shipped identity sources alongside cloud and data-platform vendors.
 - broadened the contract validator to fail on skill-like directories missing `SKILL.md`, and expanded the Bandit CI lane from a few hand-picked paths to `skills/`, `mcp-server/`, and `scripts/`.
 - added a repo-aware `mypy` runner and CI lane that type-checks each skill `src/` directory in isolation plus `mcp-server/src/` and `scripts/`, so the repeated `ingest.py` / `detect.py` layout no longer blocks meaningful type enforcement.
+- `scripts/validate_test_coverage.py` plus a dedicated CI coverage lane that now enforces real repo-level thresholds: `overall >= 70%`, `detection >= 80%`, and `evaluation >= 60%`.
+- `runners/aws-s3-sqs-detect`, a repo-owned AWS reference runner template for `S3 -> ingest Lambda -> SQS -> detect Lambda -> DynamoDB dedupe -> SNS`, so persistent execution is no longer docs-only outside the IAM departures workflow.
 - `docs/CANONICAL_SCHEMA.md` and `docs/DATA_FLOW.md` to pin the repo-owned canonical model and the raw → canonical → native / ocsf / bridge flow.
 
 ### Changed

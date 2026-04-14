@@ -205,8 +205,28 @@ jobs:
       - uses: ./.github/actions/setup-python-deps
         with:
           python-version: "3.11"
-          packages: pytest pytest-cov
+          packages: pytest pytest-cov defusedxml
       - run: pytest tests/integration/ mcp-server/tests/ -v -o "testpaths=tests"
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: [lint, skill-contract, type-check, safe-skill-bar]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-python-deps
+        with:
+          python-version: "3.11"
+          packages: >-
+            boto3 moto pytest pytest-cov
+            defusedxml
+            google-cloud-compute google-cloud-iam google-cloud-resource-manager google-cloud-storage
+            azure-identity azure-mgmt-network azure-mgmt-resource azure-mgmt-storage
+            google-api-python-client
+            clickhouse-connect databricks-sql-connector httpx snowflake-connector-python
+      - name: Run full test suite with coverage gates
+        run: pytest skills/ tests/integration/ mcp-server/tests/ --cov=skills --cov-report=term-missing --cov-report=xml
+      - name: Validate coverage floors
+        run: python scripts/validate_test_coverage.py coverage.xml
 
   # ── IaC validation (CloudFormation + Terraform in one job) ─────
   validate-iac:
@@ -225,6 +245,7 @@ jobs:
         run: |
           cfn-lint skills/remediation/iam-departures-remediation/infra/cloudformation.yaml
           cfn-lint skills/remediation/iam-departures-remediation/infra/cross_account_stackset.yaml
+          cfn-lint runners/aws-s3-sqs-detect/template.yaml
       - name: terraform validate
         run: cd skills/remediation/iam-departures-remediation/infra/terraform && terraform init -backend=false && terraform validate
 

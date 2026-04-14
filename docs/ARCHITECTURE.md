@@ -178,7 +178,12 @@ A **runner** (L9 driver, not a skill) drives the skills in a loop from a source 
                          └─ checkpoint state in DynamoDB / Snowflake STREAM
 ```
 
-Example runners (none exist yet — land in PR V):
+Shipped reference runner:
+```
+runners/aws-s3-sqs-detect              # S3 -> ingest Lambda -> SQS -> detect Lambda -> DynamoDB dedupe -> SNS
+```
+
+Additional example runners:
 ```
 runners/runner-s3-to-snowflake          # S3 → skill → Snowflake COPY INTO
 runners/runner-eventbridge-to-security-lake   # EventBridge → skill → Parquet → Security Lake
