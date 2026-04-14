@@ -85,7 +85,9 @@ Each skill is a standalone Python bundle following [Anthropic's skill spec](http
   - `ingest-mcp-proxy-ocsf`
   - `ingest-entra-directory-audit-ocsf`
   - `ingest-google-workspace-login-ocsf`
+  - `ingest-okta-system-log-ocsf`
   - `detect-lateral-movement`
+  - `detect-okta-mfa-fatigue`
   - `detect-privilege-escalation-k8s`
   - `detect-sensitive-secret-read-k8s`
   - `detect-mcp-tool-drift`

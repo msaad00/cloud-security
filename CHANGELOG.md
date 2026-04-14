@@ -36,6 +36,7 @@ The format is loosely based on Keep a Changelog.
 - Extended the native/OCSF pilot to `ingest-mcp-proxy-ocsf` and `detect-mcp-tool-drift`, so the MCP application-activity ingestion and tool-drift detection path now supports native or OCSF input/output without changing the core drift logic.
 - Extended the native/OCSF pilot to `ingest-google-workspace-login-ocsf` and `detect-google-workspace-suspicious-login`, so the Workspace login ingestion and suspicious-login detection path now supports native or OCSF input/output without changing the underlying detection semantics.
 - Extended the native/OCSF pilot to `ingest-entra-directory-audit-ocsf` and `detect-entra-credential-addition`, so Entra directory-audit ingestion and credential-addition detection now support native or OCSF input/output without changing the underlying detection semantics.
+- Extended the native/OCSF pilot to `ingest-okta-system-log-ocsf` and `detect-okta-mfa-fatigue`, so the Okta System Log ingestion and MFA-fatigue detection path now supports native or OCSF input/output without changing the underlying detection semantics.
 - Made the README honest about current schema-mode rollout, required `input_formats` / `output_formats` for every shipped skill, and documented the native output fields on the currently dual-mode skills.
 
 - `docs/COVERAGE_MODEL.md`, `docs/framework-coverage.json`, and `docs/ROADMAP.md` to make framework, provider, asset, and execution coverage measurable and auditable.

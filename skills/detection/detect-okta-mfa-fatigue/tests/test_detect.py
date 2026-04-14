@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from detect import (  # type: ignore[import-not-found]
     AUTH_CLASS_UID,
+    CANONICAL_VERSION,
     CHALLENGE_EVENT_TYPES,
     FINDING_CLASS_UID,
     FINDING_TYPE_UID,
@@ -20,6 +21,7 @@ from detect import (  # type: ignore[import-not-found]
     MIN_RELEVANT_EVENTS,
     MITRE_TECHNIQUE_UID,
     OKTA_INGEST_SKILL,
+    OUTPUT_FORMATS,
     REPO_NAME,
     REPO_VENDOR,
     SEVERITY_HIGH,
@@ -77,6 +79,42 @@ def _event(
         "src_endpoint": {"ip": ip},
         "user": {"uid": user_uid, "name": user_name, "email_addr": user_name},
         "session": {"uid": session_uid},
+        "unmapped": {"okta": {"event_type": event_type}},
+    }
+    if status_detail:
+        event["status_detail"] = status_detail
+    if resource_name:
+        event["resources"] = [{"name": resource_name, "type": "AuthenticatorEnrollment"}]
+        event["service"] = {"name": resource_name}
+    return event
+
+
+def _native_event(
+    *,
+    uid: str,
+    event_type: str,
+    time_ms: int,
+    user_uid: str = "00u-alice",
+    user_name: str = "alice@example.com",
+    status_id: int = 1,
+    status_detail: str | None = None,
+    ip: str = "198.51.100.25",
+    session_uid: str = "sess-okta-1",
+    resource_name: str = "Okta Verify",
+) -> dict:
+    event = {
+        "schema_mode": "native",
+        "canonical_schema_version": CANONICAL_VERSION,
+        "record_type": "authentication",
+        "source_skill": OKTA_INGEST_SKILL,
+        "event_uid": uid,
+        "provider": "Okta",
+        "time_ms": time_ms,
+        "status_id": status_id,
+        "user": {"uid": user_uid, "name": user_name, "email_addr": user_name},
+        "src_endpoint": {"ip": ip},
+        "session": {"uid": session_uid},
+        "event_type": event_type,
         "unmapped": {"okta": {"event_type": event_type}},
     }
     if status_detail:
@@ -215,6 +253,51 @@ class TestDetection:
     def test_golden_fixture_matches(self):
         findings = list(detect(_load(INPUT)))
         assert findings == _load(EXPECTED)
+
+    def test_native_input_can_emit_native_finding(self):
+        events = [
+            _native_event(uid="evt-1", event_type="system.push.send_factor_verify_push", time_ms=1000),
+            _native_event(uid="evt-2", event_type="system.push.send_factor_verify_push", time_ms=2000),
+            _native_event(
+                uid="evt-3",
+                event_type="user.mfa.okta_verify.deny_push",
+                time_ms=3000,
+                status_id=STATUS_FAILURE,
+                status_detail="INVALID_CREDENTIALS",
+            ),
+        ]
+        findings = list(detect(events, output_format="native"))
+        assert OUTPUT_FORMATS == ("ocsf", "native")
+        assert len(findings) == 1
+        finding = findings[0]
+        assert finding["schema_mode"] == "native"
+        assert finding["record_type"] == "detection_finding"
+        assert finding["provider"] == "Okta"
+        assert "class_uid" not in finding
+
+    def test_native_input_can_emit_ocsf_finding(self):
+        events = [
+            _native_event(uid="evt-1", event_type="system.push.send_factor_verify_push", time_ms=1000),
+            _native_event(uid="evt-2", event_type="system.push.send_factor_verify_push", time_ms=2000),
+            _native_event(
+                uid="evt-3",
+                event_type="user.mfa.okta_verify.deny_push",
+                time_ms=3000,
+                status_id=STATUS_FAILURE,
+                status_detail="INVALID_CREDENTIALS",
+            ),
+        ]
+        findings = list(detect(events, output_format="ocsf"))
+        assert len(findings) == 1
+        assert findings[0]["class_uid"] == FINDING_CLASS_UID
+
+    def test_rejects_unsupported_output_format(self):
+        try:
+            list(detect([], output_format="bridge"))
+        except ValueError as exc:
+            assert "unsupported output_format" in str(exc)
+        else:
+            raise AssertionError("expected unsupported output_format to raise")
 
 
 class TestMetadata:
