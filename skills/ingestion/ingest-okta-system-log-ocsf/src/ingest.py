@@ -1,11 +1,11 @@
-"""Convert raw Okta System Log events to OCSF 1.8 IAM events.
+"""Convert raw Okta System Log events to native or OCSF IAM events.
 
 Input:  Okta System Log API arrays, single-event JSON, event hook wrappers,
         or NDJSON.
-Output: JSONL of OCSF Identity & Access Management events across:
-        - Authentication (3002)
-        - Account Change (3001)
-        - User Access Management (3005)
+Output: JSONL of either:
+        - OCSF Identity & Access Management events across Authentication (3002),
+          Account Change (3001), and User Access Management (3005), or
+        - repo-owned native IAM activity records.
 
 Contract: see ../OCSF_CONTRACT.md
 """
@@ -21,6 +21,8 @@ from typing import Any, Iterable
 
 SKILL_NAME = "ingest-okta-system-log-ocsf"
 OCSF_VERSION = "1.8.0"
+CANONICAL_VERSION = "2026-04"
+OUTPUT_FORMATS = ("ocsf", "native")
 
 CATEGORY_UID = 3
 CATEGORY_NAME = "Identity & Access Management"
@@ -255,29 +257,50 @@ def _metadata_uid(event: dict[str, Any]) -> str:
     return hashlib.sha256(json.dumps(stable, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
-def _base_event(event: dict[str, Any], class_uid: int, class_name: str, activity_id: int) -> dict[str, Any]:
+def _status_name(status_id: int) -> str:
+    return {
+        STATUS_SUCCESS: "success",
+        STATUS_FAILURE: "failure",
+        STATUS_UNKNOWN: "unknown",
+    }.get(status_id, "unknown")
+
+
+def _severity_name(severity_id: int) -> str:
+    return {
+        SEVERITY_INFORMATIONAL: "informational",
+        SEVERITY_LOW: "low",
+        SEVERITY_MEDIUM: "medium",
+        SEVERITY_HIGH: "high",
+        SEVERITY_UNKNOWN: "unknown",
+    }.get(severity_id, "unknown")
+
+
+def _record_type(class_uid: int) -> str:
+    return {
+        AUTH_CLASS_UID: "authentication",
+        ACCOUNT_CHANGE_CLASS_UID: "account_change",
+        USER_ACCESS_CLASS_UID: "user_access_management",
+    }.get(class_uid, "iam_activity")
+
+
+def _build_canonical_event(event: dict[str, Any], class_uid: int, activity_id: int) -> dict[str, Any]:
     status_id, status_detail = status_from_outcome(event.get("outcome") or {})
-    base: dict[str, Any] = {
+    severity_id = severity_to_id(event.get("severity"))
+    canonical: dict[str, Any] = {
+        "schema_mode": "canonical",
+        "canonical_schema_version": CANONICAL_VERSION,
+        "record_type": _record_type(class_uid),
+        "source_skill": SKILL_NAME,
+        "event_uid": _metadata_uid(event),
+        "provider": "Okta",
         "activity_id": activity_id,
-        "category_uid": CATEGORY_UID,
-        "category_name": CATEGORY_NAME,
-        "class_uid": class_uid,
-        "class_name": class_name,
-        "type_uid": class_uid * 100 + activity_id,
-        "severity_id": severity_to_id(event.get("severity")),
+        "event_type": str(event.get("eventType") or ""),
+        "severity_id": severity_id,
+        "severity": _severity_name(severity_id),
         "status_id": status_id,
-        "time": parse_ts_ms(event.get("published")),
-        "message": str(event.get("displayMessage") or event.get("eventType") or class_name),
-        "metadata": {
-            "version": OCSF_VERSION,
-            "uid": _metadata_uid(event),
-            "product": {
-                "name": "cloud-ai-security-skills",
-                "vendor_name": "msaad00/cloud-ai-security-skills",
-                "feature": {"name": SKILL_NAME},
-            },
-            "labels": ["identity", "okta", "system-log", "ingest"],
-        },
+        "status": _status_name(status_id),
+        "time_ms": parse_ts_ms(event.get("published")),
+        "message": str(event.get("displayMessage") or event.get("eventType") or _record_type(class_uid)),
         "actor": _actor(event),
         "src_endpoint": _src_endpoint(event),
         "unmapped": {
@@ -290,12 +313,12 @@ def _base_event(event: dict[str, Any], class_uid: int, class_name: str, activity
         },
     }
     if status_detail:
-        base["status_detail"] = status_detail
-    return base
+        canonical["status_detail"] = status_detail
+    return canonical
 
 
 def _build_authentication_event(event: dict[str, Any], activity_id: int) -> dict[str, Any]:
-    out = _base_event(event, AUTH_CLASS_UID, AUTH_CLASS_NAME, activity_id)
+    out = _build_canonical_event(event, AUTH_CLASS_UID, activity_id)
     user = _subject_user(event)
     if user:
         out["user"] = user
@@ -310,7 +333,7 @@ def _build_authentication_event(event: dict[str, Any], activity_id: int) -> dict
 
 
 def _build_account_change_event(event: dict[str, Any], activity_id: int) -> dict[str, Any]:
-    out = _base_event(event, ACCOUNT_CHANGE_CLASS_UID, ACCOUNT_CHANGE_CLASS_NAME, activity_id)
+    out = _build_canonical_event(event, ACCOUNT_CHANGE_CLASS_UID, activity_id)
     out["user"] = _subject_user(event)
     resources = _resources(event)
     if resources:
@@ -319,11 +342,58 @@ def _build_account_change_event(event: dict[str, Any], activity_id: int) -> dict
 
 
 def _build_user_access_event(event: dict[str, Any], activity_id: int) -> dict[str, Any]:
-    out = _base_event(event, USER_ACCESS_CLASS_UID, USER_ACCESS_CLASS_NAME, activity_id)
+    out = _build_canonical_event(event, USER_ACCESS_CLASS_UID, activity_id)
     out["user"] = _subject_user(event)
     out["resources"] = _resources(event)
     out["privileges"] = _privileges(event)
     return out
+
+
+def _render_ocsf_event(canonical: dict[str, Any]) -> dict[str, Any]:
+    class_uid = {
+        "authentication": AUTH_CLASS_UID,
+        "account_change": ACCOUNT_CHANGE_CLASS_UID,
+        "user_access_management": USER_ACCESS_CLASS_UID,
+    }.get(canonical["record_type"], AUTH_CLASS_UID)
+    class_name = {
+        AUTH_CLASS_UID: AUTH_CLASS_NAME,
+        ACCOUNT_CHANGE_CLASS_UID: ACCOUNT_CHANGE_CLASS_NAME,
+        USER_ACCESS_CLASS_UID: USER_ACCESS_CLASS_NAME,
+    }[class_uid]
+    out: dict[str, Any] = {
+        "activity_id": canonical["activity_id"],
+        "category_uid": CATEGORY_UID,
+        "category_name": CATEGORY_NAME,
+        "class_uid": class_uid,
+        "class_name": class_name,
+        "type_uid": class_uid * 100 + canonical["activity_id"],
+        "severity_id": canonical["severity_id"],
+        "status_id": canonical["status_id"],
+        "time": canonical["time_ms"],
+        "message": canonical["message"],
+        "metadata": {
+            "version": OCSF_VERSION,
+            "uid": canonical["event_uid"],
+            "product": {
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
+                "feature": {"name": SKILL_NAME},
+            },
+            "labels": ["identity", "okta", "system-log", "ingest"],
+        },
+        "unmapped": canonical["unmapped"],
+    }
+    for field in ("actor", "src_endpoint", "user", "session", "resources", "service", "privileges", "status_detail"):
+        if canonical.get(field):
+            out[field] = canonical[field]
+    return out
+
+
+def _render_native_event(canonical: dict[str, Any]) -> dict[str, Any]:
+    native = dict(canonical)
+    native["schema_mode"] = "native"
+    native["output_format"] = "native"
+    return native
 
 
 def validate_event(event: dict[str, Any]) -> tuple[bool, str]:
@@ -337,7 +407,7 @@ def validate_event(event: dict[str, Any]) -> tuple[bool, str]:
     return True, ""
 
 
-def convert_event(event: dict[str, Any]) -> dict[str, Any]:
+def convert_event(event: dict[str, Any], output_format: str = "ocsf") -> dict[str, Any]:
     event_type = str(event.get("eventType") or "")
     route = _classify_event(event_type)
     if route is None:
@@ -345,11 +415,17 @@ def convert_event(event: dict[str, Any]) -> dict[str, Any]:
 
     class_uid, _class_name, activity_id = route
     if class_uid == AUTH_CLASS_UID:
-        return _build_authentication_event(event, activity_id)
-    if class_uid == ACCOUNT_CHANGE_CLASS_UID:
-        return _build_account_change_event(event, activity_id)
-    if class_uid == USER_ACCESS_CLASS_UID:
-        return _build_user_access_event(event, activity_id)
+        canonical = _build_authentication_event(event, activity_id)
+    elif class_uid == ACCOUNT_CHANGE_CLASS_UID:
+        canonical = _build_account_change_event(event, activity_id)
+    elif class_uid == USER_ACCESS_CLASS_UID:
+        canonical = _build_user_access_event(event, activity_id)
+    else:
+        raise ValueError(f"unsupported class route for {event_type}")
+    if output_format == "native":
+        return _render_native_event(canonical)
+    if output_format == "ocsf":
+        return _render_ocsf_event(canonical)
     raise ValueError(f"unsupported class route for {event_type}")
 
 
@@ -401,30 +477,38 @@ def iter_raw_events(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
             print(f"[{SKILL_NAME}] skipping line {lineno}: not a JSON object or Okta wrapper", file=sys.stderr)
 
 
-def ingest(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
+def ingest(stream: Iterable[str], output_format: str = "ocsf") -> Iterable[dict[str, Any]]:
+    if output_format not in OUTPUT_FORMATS:
+        raise ValueError(f"unsupported output_format `{output_format}`")
     for raw in iter_raw_events(stream):
         ok, reason = validate_event(raw)
         if not ok:
             print(f"[{SKILL_NAME}] skipping event: {reason}", file=sys.stderr)
             continue
         try:
-            yield convert_event(raw)
+            yield convert_event(raw, output_format=output_format)
         except Exception as exc:
             print(f"[{SKILL_NAME}] skipping event: convert error: {exc}", file=sys.stderr)
             continue
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Convert raw Okta System Log JSON to OCSF 1.8 IAM JSONL.")
+    parser = argparse.ArgumentParser(description="Convert raw Okta System Log JSON to OCSF or native IAM JSONL.")
     parser.add_argument("input", nargs="?", help="Input JSON/JSONL file. Defaults to stdin.")
     parser.add_argument("--output", "-o", help="Output JSONL file. Defaults to stdout.")
+    parser.add_argument(
+        "--output-format",
+        choices=OUTPUT_FORMATS,
+        default="ocsf",
+        help="Render OCSF IAM events (default) or the native canonical projection.",
+    )
     args = parser.parse_args(argv)
 
     in_stream = sys.stdin if not args.input else open(args.input, "r", encoding="utf-8")
     out_stream = sys.stdout if not args.output else open(args.output, "w", encoding="utf-8")
 
     try:
-        for event in ingest(in_stream):
+        for event in ingest(in_stream, output_format=args.output_format):
             out_stream.write(json.dumps(event, separators=(",", ":")) + "\n")
     finally:
         if args.input:

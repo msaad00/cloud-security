@@ -1,8 +1,8 @@
 ---
 name: ingest-okta-system-log-ocsf
 description: >-
-  Convert verified Okta System Log events into OCSF 1.8 Identity & Access
-  Management events. The first slice maps session and SSO events to
+  Convert verified Okta System Log events into OCSF 1.8 or native Identity &
+  Access Management records. The first slice maps session and SSO events to
   Authentication (3002), user lifecycle and account-control changes to Account
   Change (3001), app/group membership updates to User Access Management (3005),
   and a narrow verified set of Okta Verify MFA challenge and denial events to
@@ -10,19 +10,19 @@ description: >-
   transaction.id, and authenticationContext.externalSessionId for SIEM-friendly
   dedupe and correlation. Use when the user mentions Okta System Log ingestion,
   Okta audit log normalization, cross-vendor identity telemetry, or feeding
-  Okta identity events into an OCSF pipeline. Do NOT use for raw Azure Entra,
+  Okta identity events into an OCSF pipeline or native canonical-first flow. Do NOT use for raw Azure Entra,
   Google Workspace, or AWS IAM logs. Do NOT use as a detector or policy engine
-  — this skill only normalizes verified Okta event payloads into OCSF.
+  — this skill only normalizes verified Okta event payloads into OCSF or native output.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
-output_formats: ocsf
+output_formats: native, ocsf
 compatibility: >-
   Requires Python 3.11+. No Okta SDK required when System Log payloads are
   already exported. Read-only — validates raw Okta event shape and emits OCSF
-  JSONL only. Never calls write APIs.
+  or native JSONL. Never calls write APIs.
 metadata:
   author: msaad00
   homepage: https://github.com/msaad00/cloud-ai-security-skills
@@ -36,7 +36,7 @@ metadata:
 
 # ingest-okta-system-log-ocsf
 
-Convert raw Okta System Log payloads into OCSF 1.8 IAM events with
+Convert raw Okta System Log payloads into OCSF 1.8 or native IAM events with
 deterministic IDs and verified field mappings.
 
 ## Use when
@@ -127,7 +127,10 @@ Unsupported event types are skipped with a warning to `stderr`.
 
 ## Output contract
 
-Emits OCSF 1.8 JSONL with verified class mappings:
+Emits OCSF 1.8 JSONL by default, with `--output-format native` available for
+the repo-owned canonical projection.
+
+OCSF output uses these verified class mappings:
 
 - **Authentication (3002)** for session, SSO, and verified Okta Verify MFA verification events
 - **Account Change (3001)** for user lifecycle and account-control events
@@ -151,6 +154,9 @@ cat event-hook.json | python src/ingest.py > okta.ocsf.jsonl
 
 # pretty output file
 python src/ingest.py okta.json --output okta.ocsf.jsonl
+
+# native projection for non-OCSF consumers
+python src/ingest.py okta.json --output-format native > okta.native.jsonl
 ```
 
 ## Security guardrails
@@ -159,6 +165,23 @@ python src/ingest.py okta.json --output okta.ocsf.jsonl
 - Keeps vendor-native IDs for dedupe and correlation instead of inventing new random IDs.
 - Uses verified raw fields from official Okta docs only; unsupported event types are skipped rather than guessed.
 - Normalizes into OCSF only where the class fit is explicit. Unmapped vendor-specific detail stays under `unmapped`.
+
+## Native output format
+
+When `--output-format native` is selected, the skill emits:
+
+- `schema_mode: "native"`
+- `canonical_schema_version`
+- `record_type`
+- `event_uid`
+- `provider`
+- `activity_id`
+- `event_type`
+- `severity` / `severity_id`
+- `status` / `status_id`
+- `time_ms`
+- `actor`, `user`, `src_endpoint`, `session`, `resources`, and `privileges` where present
+- `unmapped.okta.*` vendor-specific detail for transaction and root-session correlation
 
 ## See also
 

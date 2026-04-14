@@ -23,7 +23,9 @@ AUTH_ACTIVITY_LOGOFF = _INGEST.AUTH_ACTIVITY_LOGOFF
 AUTH_ACTIVITY_LOGON = _INGEST.AUTH_ACTIVITY_LOGON
 AUTH_ACTIVITY_OTHER = _INGEST.AUTH_ACTIVITY_OTHER
 AUTH_CLASS_UID = _INGEST.AUTH_CLASS_UID
+CANONICAL_VERSION = _INGEST.CANONICAL_VERSION
 OCSF_VERSION = _INGEST.OCSF_VERSION
+OUTPUT_FORMATS = _INGEST.OUTPUT_FORMATS
 SKILL_NAME = _INGEST.SKILL_NAME
 STATUS_FAILURE = _INGEST.STATUS_FAILURE
 STATUS_SUCCESS = _INGEST.STATUS_SUCCESS
@@ -193,6 +195,18 @@ class TestConvert:
         assert event["session"]["uid"] == "sess-123"
         assert event["src_endpoint"]["ip"] == "198.51.100.10"
 
+    def test_native_projection_strips_ocsf_envelope(self):
+        event = convert_event(_event(), output_format="native")
+        assert OUTPUT_FORMATS == ("ocsf", "native")
+        assert event["schema_mode"] == "native"
+        assert event["canonical_schema_version"] == CANONICAL_VERSION
+        assert event["record_type"] == "authentication"
+        assert event["event_uid"] == "okta-evt-1"
+        assert event["provider"] == "Okta"
+        assert event["event_type"] == "user.session.start"
+        assert "class_uid" not in event
+        assert "metadata" not in event
+
     def test_authentication_failure_without_session(self):
         event = convert_event(
             _event(
@@ -328,3 +342,11 @@ class TestGoldenFixture:
         produced = list(ingest([RAW_FIXTURE.read_text()]))
         expected = _load_jsonl(OCSF_FIXTURE)
         assert produced == expected
+
+    def test_native_fixture_projection(self):
+        produced = list(ingest([RAW_FIXTURE.read_text()], output_format="native"))
+        expected = _load_jsonl(OCSF_FIXTURE)
+        assert len(produced) == len(expected)
+        assert produced[0]["schema_mode"] == "native"
+        assert produced[0]["event_uid"] == expected[0]["metadata"]["uid"]
+        assert "class_uid" not in produced[0]

@@ -1,9 +1,10 @@
-"""Detect repeated Okta Verify push-denial bursts from OCSF Authentication events.
+"""Detect repeated Okta Verify push-denial bursts from Okta authentication events.
 
-Reads OCSF 1.8 Authentication (class 3002) events produced by
-ingest-okta-system-log-ocsf and emits OCSF 1.8 Detection Finding (class 2004)
-when a single user receives repeated Okta Verify push challenges and denies or
-generic MFA verification failures inside a short time window.
+Reads OCSF 1.8 Authentication (class 3002) events or the native authentication
+projection produced by ingest-okta-system-log-ocsf and emits OCSF 1.8 Detection
+Finding (class 2004) by default when a single user receives repeated Okta
+Verify push challenges and denies or generic MFA verification failures inside a
+short time window.
 
 Contract: see ../OCSF_CONTRACT.md
 """
@@ -19,8 +20,10 @@ from typing import Any, Iterable
 
 SKILL_NAME = "detect-okta-mfa-fatigue"
 OCSF_VERSION = "1.8.0"
+CANONICAL_VERSION = "2026-04"
 REPO_NAME = "cloud-ai-security-skills"
 REPO_VENDOR = "msaad00/cloud-ai-security-skills"
+OUTPUT_FORMATS = ("ocsf", "native")
 
 AUTH_CLASS_UID = 3002
 FINDING_CLASS_UID = 2004
@@ -61,20 +64,20 @@ def _now_ms() -> int:
 
 def _event_time(event: dict[str, Any]) -> int:
     try:
-        return int(event.get("time") or 0)
+        return int(event.get("time_ms") or event.get("time") or 0)
     except (TypeError, ValueError):
         return 0
 
 
 def _metadata_uid(event: dict[str, Any]) -> str:
-    return str((event.get("metadata") or {}).get("uid") or "")
-
+    return str(event.get("event_uid") or (event.get("metadata") or {}).get("uid") or "")
 
 def _okta_event_type(event: dict[str, Any]) -> str:
-    return str((((event.get("unmapped") or {}).get("okta")) or {}).get("event_type") or "")
+    return str(event.get("event_type") or (((event.get("unmapped") or {}).get("okta")) or {}).get("event_type") or "")
 
-
-def _product_feature_name(event: dict[str, Any]) -> str:
+def _source_skill(event: dict[str, Any]) -> str:
+    if event.get("source_skill"):
+        return str(event["source_skill"])
     metadata = event.get("metadata") or {}
     product = metadata.get("product") or {}
     feature = product.get("feature") or {}
@@ -115,21 +118,62 @@ def _is_okta_verify_factor(event: dict[str, Any]) -> bool:
     return any(marker in normalized for marker in OKTA_VERIFY_RESOURCE_MARKERS)
 
 
-def _classify_relevant_event(event: dict[str, Any]) -> str | None:
-    if event.get("class_uid") != AUTH_CLASS_UID:
+def _normalize_event(event: dict[str, Any]) -> dict[str, Any] | None:
+    if "class_uid" in event:
+        if event.get("class_uid") != AUTH_CLASS_UID:
+            return None
+        return {
+            "source_format": "ocsf",
+            "source_skill": _source_skill(event),
+            "event_uid": _metadata_uid(event),
+            "time_ms": _event_time(event),
+            "status_id": int(event.get("status_id") or 0),
+            "status_detail": str(event.get("status_detail") or ""),
+            "user": event.get("user") or {},
+            "src_endpoint": event.get("src_endpoint") or {},
+            "session": event.get("session") or {},
+            "resources": event.get("resources") or [],
+            "service": event.get("service") or {},
+            "event_type": _okta_event_type(event),
+        }
+
+    schema_mode = str(event.get("schema_mode") or "").strip().lower()
+    if schema_mode and schema_mode not in {"canonical", "native"}:
         return None
-    if _product_feature_name(event) != OKTA_INGEST_SKILL:
+    if str(event.get("record_type") or "").strip().lower() not in {"", "authentication"}:
+        return None
+    return {
+        "source_format": schema_mode or "native",
+        "source_skill": _source_skill(event),
+        "event_uid": _metadata_uid(event),
+        "time_ms": _event_time(event),
+        "status_id": int(event.get("status_id") or 0),
+        "status_detail": str(event.get("status_detail") or ""),
+        "user": event.get("user") or {},
+        "src_endpoint": event.get("src_endpoint") or {},
+        "session": event.get("session") or {},
+        "resources": event.get("resources") or [],
+        "service": event.get("service") or {},
+        "event_type": _okta_event_type(event),
+    }
+
+
+def _classify_relevant_event(event: dict[str, Any]) -> str | None:
+    normalized = _normalize_event(event)
+    if normalized is None:
+        return None
+    if normalized["source_skill"] != OKTA_INGEST_SKILL:
         return None
 
-    event_type = _okta_event_type(event)
+    event_type = normalized["event_type"]
     if event_type in CHALLENGE_EVENT_TYPES:
         return "challenge"
     if event_type in DENY_EVENT_TYPES:
         return "deny"
     if (
         event_type == GENERIC_MFA_EVENT_TYPE
-        and int(event.get("status_id") or 0) == STATUS_FAILURE
-        and _is_okta_verify_factor(event)
+        and normalized["status_id"] == STATUS_FAILURE
+        and _is_okta_verify_factor(normalized)
     ):
         return "deny"
     return None
@@ -140,18 +184,18 @@ def _finding_uid(user_uid: str, first_uid: str, last_uid: str) -> str:
     return f"det-okta-mfa-fatigue-{hashlib.sha256(material.encode('utf-8')).hexdigest()[:16]}"
 
 
-def _build_finding(user_uid: str, user_name: str, burst: list[dict[str, Any]]) -> dict[str, Any]:
+def _build_native_finding(user_uid: str, user_name: str, burst: list[dict[str, Any]]) -> dict[str, Any]:
     first = burst[0]
     last = burst[-1]
-    first_uid = _metadata_uid(first["event"])
-    last_uid = _metadata_uid(last["event"])
+    first_uid = first["event_uid"]
+    last_uid = last["event_uid"]
     finding_uid = _finding_uid(user_uid, first_uid, last_uid)
 
     challenge_count = sum(1 for item in burst if item["kind"] == "challenge")
     denial_count = sum(1 for item in burst if item["kind"] == "deny")
-    source_ips = sorted({_source_ip(item["event"]) for item in burst if _source_ip(item["event"])})
-    session_uids = sorted({_session_uid(item["event"]) for item in burst if _session_uid(item["event"])})
-    event_uids = [_metadata_uid(item["event"]) for item in burst]
+    source_ips = sorted({str((item["src_endpoint"] or {}).get("ip") or "") for item in burst if (item["src_endpoint"] or {}).get("ip")})
+    session_uids = sorted({str((item["session"] or {}).get("uid") or "") for item in burst if (item["session"] or {}).get("uid")})
+    event_uids = [item["event_uid"] for item in burst]
 
     description = (
         f"User '{user_name or user_uid}' received {challenge_count} Okta Verify push challenge events and "
@@ -169,40 +213,33 @@ def _build_finding(user_uid: str, user_name: str, burst: list[dict[str, Any]]) -
     observables.extend({"name": "session.uid", "type": "Other", "value": uid} for uid in session_uids)
 
     return {
-        "activity_id": FINDING_ACTIVITY_CREATE,
-        "category_uid": FINDING_CATEGORY_UID,
-        "category_name": FINDING_CATEGORY_NAME,
-        "class_uid": FINDING_CLASS_UID,
-        "class_name": FINDING_CLASS_NAME,
-        "type_uid": FINDING_TYPE_UID,
+        "schema_mode": "native",
+        "canonical_schema_version": CANONICAL_VERSION,
+        "record_type": "detection_finding",
+        "source_skill": SKILL_NAME,
+        "output_format": "native",
+        "finding_uid": finding_uid,
+        "event_uid": finding_uid,
+        "provider": "Okta",
+        "time_ms": last["time_ms"] or _now_ms(),
+        "severity": "high",
         "severity_id": SEVERITY_HIGH,
+        "status": "success",
         "status_id": 1,
-        "time": _event_time(last["event"]) or _now_ms(),
-        "metadata": {
-            "version": OCSF_VERSION,
-            "uid": finding_uid,
-            "product": {
-                "name": REPO_NAME,
-                "vendor_name": REPO_VENDOR,
-                "feature": {"name": SKILL_NAME},
-            },
-            "labels": ["identity", "okta", "mfa", "fatigue", "detection"],
-        },
-        "finding_info": {
-            "uid": finding_uid,
-            "title": "Repeated Okta Verify MFA push denials for one user",
-            "desc": description,
-            "types": ["okta-mfa-fatigue", "mfa-request-generation"],
-            "first_seen_time": _event_time(first["event"]),
-            "last_seen_time": _event_time(last["event"]),
-            "attacks": [
-                {
-                    "version": MITRE_VERSION,
-                    "tactic": {"name": MITRE_TACTIC_NAME, "uid": MITRE_TACTIC_UID},
-                    "technique": {"name": MITRE_TECHNIQUE_NAME, "uid": MITRE_TECHNIQUE_UID},
-                }
-            ],
-        },
+        "title": "Repeated Okta Verify MFA push denials for one user",
+        "description": description,
+        "finding_types": ["okta-mfa-fatigue", "mfa-request-generation"],
+        "first_seen_time_ms": first["time_ms"],
+        "last_seen_time_ms": last["time_ms"],
+        "mitre_attacks": [
+            {
+                "version": MITRE_VERSION,
+                "tactic_uid": MITRE_TACTIC_UID,
+                "tactic_name": MITRE_TACTIC_NAME,
+                "technique_uid": MITRE_TECHNIQUE_UID,
+                "technique_name": MITRE_TECHNIQUE_NAME,
+            }
+        ],
         "observables": observables,
         "evidence": {
             "events_observed": len(burst),
@@ -212,6 +249,48 @@ def _build_finding(user_uid: str, user_name: str, burst: list[dict[str, Any]]) -
             "session_uids": session_uids,
             "raw_event_uids": event_uids,
         },
+    }
+
+
+def _render_ocsf_finding(native_finding: dict[str, Any]) -> dict[str, Any]:
+    attack = native_finding["mitre_attacks"][0]
+    return {
+        "activity_id": FINDING_ACTIVITY_CREATE,
+        "category_uid": FINDING_CATEGORY_UID,
+        "category_name": FINDING_CATEGORY_NAME,
+        "class_uid": FINDING_CLASS_UID,
+        "class_name": FINDING_CLASS_NAME,
+        "type_uid": FINDING_TYPE_UID,
+        "severity_id": native_finding["severity_id"],
+        "status_id": native_finding["status_id"],
+        "time": native_finding["time_ms"],
+        "metadata": {
+            "version": OCSF_VERSION,
+            "uid": native_finding["event_uid"],
+            "product": {
+                "name": REPO_NAME,
+                "vendor_name": REPO_VENDOR,
+                "feature": {"name": SKILL_NAME},
+            },
+            "labels": ["identity", "okta", "mfa", "fatigue", "detection"],
+        },
+        "finding_info": {
+            "uid": native_finding["finding_uid"],
+            "title": native_finding["title"],
+            "desc": native_finding["description"],
+            "types": native_finding["finding_types"],
+            "first_seen_time": native_finding["first_seen_time_ms"],
+            "last_seen_time": native_finding["last_seen_time_ms"],
+            "attacks": [
+                {
+                    "version": attack["version"],
+                    "tactic": {"name": attack["tactic_name"], "uid": attack["tactic_uid"]},
+                    "technique": {"name": attack["technique_name"], "uid": attack["technique_uid"]},
+                }
+            ],
+        },
+        "observables": native_finding["observables"],
+        "evidence": native_finding["evidence"],
     }
 
 
@@ -236,7 +315,9 @@ def coverage_metadata() -> dict[str, Any]:
     }
 
 
-def detect(events: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
+def detect(events: Iterable[dict[str, Any]], output_format: str = "ocsf") -> Iterable[dict[str, Any]]:
+    if output_format not in OUTPUT_FORMATS:
+        raise ValueError(f"unsupported output_format: {output_format}")
     dedupe: set[str] = set()
     states: dict[str, list[dict[str, Any]]] = {}
     active_bursts: set[str] = set()
@@ -246,29 +327,35 @@ def detect(events: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
         kind = _classify_relevant_event(event)
         if kind is None:
             continue
-        metadata_uid = _metadata_uid(event)
+        normalized = _normalize_event(event)
+        if normalized is None:
+            continue
+        metadata_uid = normalized["event_uid"]
         if metadata_uid and metadata_uid in dedupe:
             continue
         if metadata_uid:
             dedupe.add(metadata_uid)
-        user_uid, user_name = _user_info(event)
+        user_uid, user_name = _user_info(normalized)
         if not user_uid:
             continue
-        relevant.append({"kind": kind, "event": event, "user_uid": user_uid, "user_name": user_name})
+        normalized["kind"] = kind
+        normalized["user_uid"] = user_uid
+        normalized["user_name"] = user_name
+        relevant.append(normalized)
 
-    relevant.sort(key=lambda item: (item["user_uid"], _event_time(item["event"]), _metadata_uid(item["event"])))
+    relevant.sort(key=lambda item: (item["user_uid"], item["time_ms"], item["event_uid"]))
 
     for item in relevant:
         user_uid = item["user_uid"]
-        current_time = _event_time(item["event"])
+        current_time = item["time_ms"]
         burst = states.setdefault(user_uid, [])
 
-        if burst and current_time - _event_time(burst[-1]["event"]) > WINDOW_MS:
+        if burst and current_time - burst[-1]["time_ms"] > WINDOW_MS:
             burst.clear()
             active_bursts.discard(user_uid)
 
         cutoff = current_time - WINDOW_MS
-        burst[:] = [entry for entry in burst if _event_time(entry["event"]) >= cutoff]
+        burst[:] = [entry for entry in burst if entry["time_ms"] >= cutoff]
         burst.append(item)
 
         challenge_count = sum(1 for entry in burst if entry["kind"] == "challenge")
@@ -280,7 +367,11 @@ def detect(events: Iterable[dict[str, Any]]) -> Iterable[dict[str, Any]]:
             and challenge_count >= MIN_CHALLENGES
             and denial_count >= MIN_DENIALS
         ):
-            yield _build_finding(user_uid, item["user_name"], burst)
+            native_finding = _build_native_finding(user_uid, item["user_name"], burst)
+            if output_format == "native":
+                yield native_finding
+            else:
+                yield _render_ocsf_finding(native_finding)
             active_bursts.add(user_uid)
 
 
@@ -301,9 +392,10 @@ def load_jsonl(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Detect repeated Okta Verify MFA push-denial bursts from OCSF.")
-    parser.add_argument("input", nargs="?", help="OCSF JSONL input. Defaults to stdin.")
+    parser = argparse.ArgumentParser(description="Detect repeated Okta Verify MFA push-denial bursts from native or OCSF input.")
+    parser.add_argument("input", nargs="?", help="Authentication JSONL input. Defaults to stdin.")
     parser.add_argument("--output", "-o", help="Detection Finding JSONL output. Defaults to stdout.")
+    parser.add_argument("--output-format", choices=OUTPUT_FORMATS, default="ocsf", help="Output format.")
     args = parser.parse_args(argv)
 
     in_stream = sys.stdin if not args.input else open(args.input, "r", encoding="utf-8")
@@ -311,7 +403,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         events = list(load_jsonl(in_stream))
-        for finding in detect(events):
+        for finding in detect(events, output_format=args.output_format):
             out_stream.write(json.dumps(finding, separators=(",", ":")) + "\n")
     finally:
         if args.input:

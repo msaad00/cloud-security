@@ -2,7 +2,8 @@
 name: detect-okta-mfa-fatigue
 description: >-
   Detect repeated Okta Verify push-challenge and denial bursts from OCSF 1.8
-  Authentication (3002) events produced by ingest-okta-system-log-ocsf. Tracks
+  Authentication (3002) events or the native authentication projection
+  produced by ingest-okta-system-log-ocsf. Tracks
   one user at a time, looks for multiple Okta Verify push sends plus at least
   one explicit deny or MFA verification failure inside a short time window, and
   emits OCSF 1.8 Detection Finding (class 2004) with MITRE ATT&CK T1621
@@ -15,8 +16,8 @@ license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
 side_effects: none
-input_formats: ocsf
-output_formats: ocsf
+input_formats: canonical, native, ocsf
+output_formats: native, ocsf
 metadata:
   homepage: https://github.com/msaad00/cloud-ai-security-skills
   source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/detection/detect-okta-mfa-fatigue
@@ -48,8 +49,9 @@ guess at every MFA-related event type in the catalog.
 
 ## Detection logic
 
-One pass over OCSF Authentication (3002) events from
-`ingest-okta-system-log-ocsf`:
+One pass over Okta authentication events from `ingest-okta-system-log-ocsf`,
+whether they arrive as OCSF Authentication records or the native
+authentication projection:
 
 1. Group by `user.uid`
 2. Sort by `time`
@@ -64,7 +66,10 @@ there is a quiet period longer than the correlation window.
 
 ## Output contract
 
-Emits OCSF 1.8 Detection Finding (class `2004`) with:
+Emits OCSF 1.8 Detection Finding (class `2004`) by default. With
+`--output-format native`, emits the repo-owned native finding projection.
+
+OCSF output includes:
 
 - deterministic `metadata.uid` and `finding_info.uid`
 - `finding_info.types[] = ["okta-mfa-fatigue", "mfa-request-generation"]`
@@ -78,6 +83,10 @@ Emits OCSF 1.8 Detection Finding (class `2004`) with:
 python ../ingest-okta-system-log-ocsf/src/ingest.py okta-system-log.json \
   | python src/detect.py \
   > okta-mfa-fatigue-findings.ocsf.jsonl
+
+python ../ingest-okta-system-log-ocsf/src/ingest.py okta-system-log.json --output-format native \
+  | python src/detect.py --output-format native \
+  > okta-mfa-fatigue-findings.native.jsonl
 ```
 
 ## Do NOT use
@@ -91,8 +100,22 @@ python ../ingest-okta-system-log-ocsf/src/ingest.py okta-system-log.json \
 
 The test suite covers:
 
-- out-of-order OCSF auth input
+- out-of-order OCSF and native auth input
 - exact window-boundary behavior
 - duplicate event suppression by `metadata.uid`
 - classic `deny_push` and OIE `auth_via_mfa` failure paths
 - a frozen golden fixture for detector output parity
+
+## Native output format
+
+When `--output-format native` is selected, the skill emits:
+
+- `schema_mode: "native"`
+- `canonical_schema_version`
+- `record_type: "detection_finding"`
+- `finding_uid` and `event_uid`
+- `provider`
+- `time_ms`
+- `mitre_attacks`
+- `observables`
+- `evidence`
