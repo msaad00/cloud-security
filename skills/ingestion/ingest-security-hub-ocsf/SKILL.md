@@ -1,22 +1,15 @@
 ---
 name: ingest-security-hub-ocsf
 description: >-
-  Convert AWS Security Hub findings in ASFF (AWS Security Finding Format) into
-  OCSF 1.8 Detection Finding events (class 2004). Validates the required ASFF
-  fields, maps the HIGH/MEDIUM/LOW/INFORMATIONAL label (plus the 0-100
-  Normalized score) to OCSF severity_id, preserves the aggregated
-  Resources[]/Types[]/Compliance context, and extracts MITRE ATT&CK
-  annotations from ProductFields when the upstream product emits them.
-  Handles single findings, the `{"Findings": [...]}` BatchImport wrapper,
-  and EventBridge `Security Hub Findings - Imported` envelopes. Use when the
-  user mentions Security Hub ingestion, ASFF normalisation, cross-account
-  aggregator pipelines, or unifying findings from multiple AWS security
-  services (GuardDuty, Inspector, Macie, Config rules) into OCSF. Do NOT use
-  for GuardDuty native findings (use ingest-guardduty-ocsf), CloudTrail audit
-  logs (use ingest-cloudtrail-ocsf), or VPC Flow Logs (use
-  ingest-vpc-flow-logs-ocsf). Do NOT use as a detection skill — Security Hub
-  aggregates detections from upstream products; this skill is a passthrough
-  normaliser/validator.
+  Convert AWS Security Hub ASFF findings into OCSF 1.8 Detection Finding
+  events. Validates the required ASFF fields, maps ASFF severity into OCSF,
+  preserves aggregated resource and compliance context, and extracts MITRE
+  ATT&CK hints when upstream products provide them. Supports single findings,
+  `{\"Findings\": [...]}` wrappers, and EventBridge imported-finding
+  envelopes. Use when the user mentions Security Hub ingestion, ASFF
+  normalization, or unifying upstream AWS findings into OCSF. Do NOT use for
+  GuardDuty native findings, CloudTrail audit logs, or VPC Flow Logs. Do NOT
+  use as a detection skill; this is a passthrough normalizer and validator.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent

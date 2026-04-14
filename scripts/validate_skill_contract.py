@@ -7,6 +7,7 @@ from skill_validation_common import (
     EXECUTION_MODE_VALUES,
     INPUT_FORMAT_VALUES,
     NAME_RE,
+    NETWORK_EGRESS_RE,
     OUTPUT_FORMAT_VALUES,
     ROOT,
     SIDE_EFFECT_VALUES,
@@ -85,6 +86,19 @@ def main() -> int:
                 errors.append(f"{rel}: invalid output_formats {unknown_output_formats}")
         elif output_formats:
             errors.append(f"{rel}: output_formats must not be empty")
+
+        network_egress = skill.frontmatter.get("network_egress")
+        parsed_network_egress = tuple(
+            part.strip() for part in network_egress.split(",") if part.strip()
+        ) if network_egress else ()
+        if parsed_network_egress:
+            invalid_network_egress = [
+                host for host in parsed_network_egress if not NETWORK_EGRESS_RE.fullmatch(host)
+            ]
+            if invalid_network_egress:
+                errors.append(f"{rel}: invalid network_egress entries {invalid_network_egress}")
+        elif network_egress:
+            errors.append(f"{rel}: network_egress must not be empty")
 
         if skill.is_write_capable:
             if skill.approval_model != "human_required":

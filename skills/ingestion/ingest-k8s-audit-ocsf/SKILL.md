@@ -1,21 +1,15 @@
 ---
 name: ingest-k8s-audit-ocsf
 description: >-
-  Convert raw Kubernetes audit logs (audit.k8s.io/v1) into OCSF 1.8 API
-  Activity events (class 6003). Reads the JSON format kube-apiserver writes to
-  its audit log sink (file, webhook, or dynamic backend). Maps user.username
-  and user.groups to OCSF actor, sourceIPs to src_endpoint, verb to
-  api.operation, api.service.name to "kubernetes", and infers activity_id
-  (Create / Read / Update / Delete) from the K8s verb. Sets status_id from
-  responseStatus.code. Captures objectRef (resource, namespace, name, apiGroup)
-  in resources[] with enough precision for detectors to spot
-  service-account-token-theft, privileged-pod creation, and secret access.
-  Use when the user mentions Kubernetes audit logs, kube-apiserver audit sink,
-  OCSF pipeline for K8s, k8s detection engineering, or feeding K8s audit into
-  a SIEM. Do NOT use for container runtime logs (different source), kubelet
-  logs (different source), or CloudTrail / GCP audit / Azure activity (use the
-  matching ingest-* skills). Do NOT use as a detection skill — this only
-  normalises events.
+  Convert raw Kubernetes audit logs (`audit.k8s.io/v1`) into normalized API
+  activity records, with OCSF as the default wire format and native output as
+  an option. Maps user, source IP, verb, objectRef, and response status with
+  enough fidelity for K8s privilege-escalation and secret-access detectors.
+  Use when the user mentions Kubernetes audit logs, kube-apiserver audit
+  sinks, K8s detection engineering, or feeding K8s audit into a SIEM. Do NOT
+  use for container runtime logs, kubelet logs, or CloudTrail / GCP audit /
+  Azure Activity. Do NOT use as a detection skill; this only normalizes
+  events.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent

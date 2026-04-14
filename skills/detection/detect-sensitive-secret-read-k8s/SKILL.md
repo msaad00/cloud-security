@@ -1,22 +1,15 @@
 ---
 name: detect-sensitive-secret-read-k8s
 description: >-
-  Detect reads of Kubernetes Secrets whose names match sensitive patterns
-  (credentials, tokens, API keys, cloud provider creds, TLS material, service
-  account tokens, and Docker config secrets). Reads OCSF 1.8 API Activity
-  (class 6003) events produced by ingest-k8s-audit-ocsf and emits OCSF 1.8
-  Detection Finding (class 2004) with MITRE ATT&CK T1552.007 (Unsecured
-  Credentials — Container API). Stateless pattern matcher — works on
-  Metadata-level audit logs, no Request/RequestResponse level required.
-  Complements detect-privilege-escalation-k8s Rule 1 by catching direct
-  targeted reads of high-value secrets even when there's no preceding list.
-  Use when the user mentions Kubernetes secret access, sensitive secret
-  detection, Container API credential access, or wants to detect workloads
-  reading credentials by name. Do NOT use on raw audit logs — pipe them
-  through ingest-k8s-audit-ocsf first. Do NOT use to detect list-then-get
-  enumeration patterns (that's detect-privilege-escalation-k8s Rule 1). Do
-  NOT use for cross-namespace analysis — that's a separate detector on the
-  roadmap.
+  Detect targeted reads of Kubernetes Secrets whose names match sensitive
+  patterns from normalized K8s audit events in native or OCSF mode. Emits
+  findings aligned to MITRE ATT&CK T1552.007 when workloads read high-value
+  secrets by name without requiring a preceding enumeration sequence. Use
+  when the user mentions Kubernetes secret access, credential reads through
+  the Container API, or workloads reading secrets by name. Do NOT use on raw
+  audit logs — pipe them through ingest-k8s-audit-ocsf first. Do NOT use for
+  list-then-get enumeration patterns; that belongs to
+  detect-privilege-escalation-k8s. Do NOT use for cross-namespace analysis.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
@@ -26,6 +19,12 @@ output_formats: native, ocsf
 ---
 
 # detect-sensitive-secret-read-k8s
+
+## Use when
+
+- Kubernetes secret-access telemetry is already normalized by `ingest-k8s-audit-ocsf`
+- you want a direct-read detector for high-value secret names
+- you want native or OCSF findings for targeted secret access attempts
 
 ## Attack pattern
 

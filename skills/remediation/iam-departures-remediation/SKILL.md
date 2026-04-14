@@ -20,6 +20,7 @@ execution_modes: jit, persistent
 side_effects: writes-identity, writes-storage, writes-database, writes-audit
 input_formats: raw, canonical
 output_formats: native
+network_egress: api.workday.com, *.snowflakecomputing.com, *.databricks.com, *.clickhouse.cloud
 compatibility: >-
   Requires AWS CLI, Python 3.11+, and boto3. Lambdas deploy to AWS. HR data
   source requires one of: Snowflake connector, Databricks SQL connector,
@@ -109,6 +110,13 @@ flowchart TD
 - **Encryption**: S3 manifests KMS-encrypted. DynamoDB encryption at rest. Lambda env vars encrypted.
 - **VPC isolation**: Both Lambdas run in VPC with no public internet (NAT gateway for AWS API calls only).
 - **Audit trail**: Every action dual-written to DynamoDB + S3. Ingest-back to source warehouse for reconciliation.
+
+## Do NOT do
+
+- Do NOT bypass the grace period by editing timestamps or manifest state by hand.
+- Do NOT call the Step Function or worker Lambda directly; enter through the documented EventBridge path.
+- Do NOT write directly to the audit DynamoDB or S3 records outside the shipped workflow.
+- Do NOT point this skill at production without a dry-run review and explicit human approval.
 
 ## Rehire Safety
 

@@ -24,6 +24,7 @@ SIDE_EFFECT_VALUES = {
 }
 INPUT_FORMAT_VALUES = {"raw", "canonical", "native", "ocsf"}
 OUTPUT_FORMAT_VALUES = {"native", "ocsf", "bridge"}
+NETWORK_EGRESS_RE = re.compile(r"^(?:\*\.)?(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
 
 ENTRYPOINT_CANDIDATES = (
     "src/ingest.py",
@@ -107,6 +108,10 @@ class SkillContract:
     @property
     def side_effects(self) -> tuple[str, ...]:
         return parse_modes(self.frontmatter.get("side_effects"))
+
+    @property
+    def network_egress(self) -> tuple[str, ...]:
+        return parse_modes(self.frontmatter.get("network_egress"))
 
 
 def iter_skill_dirs() -> list[Path]:

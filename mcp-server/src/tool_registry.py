@@ -29,6 +29,7 @@ class SkillSpec:
     side_effects: tuple[str, ...]
     input_formats: tuple[str, ...]
     output_formats: tuple[str, ...]
+    network_egress: tuple[str, ...]
 
     @property
     def supported(self) -> bool:
@@ -144,6 +145,7 @@ def discover_skills(root: Path | None = None) -> list[SkillSpec]:
                 side_effects=_parse_modes(metadata.get("side_effects")),
                 input_formats=_parse_modes(metadata.get("input_formats")),
                 output_formats=_parse_modes(metadata.get("output_formats")),
+                network_egress=_parse_modes(metadata.get("network_egress")),
             )
         )
     return specs
@@ -184,11 +186,13 @@ def tool_input_schema(skill: SkillSpec) -> dict[str, object]:
 def tool_definition(skill: SkillSpec) -> dict[str, object]:
     mode_list = ", ".join(skill.execution_modes) if skill.execution_modes else "unspecified"
     effect_list = ", ".join(skill.side_effects) if skill.side_effects else "unspecified"
+    egress_list = ", ".join(skill.network_egress) if skill.network_egress else "none"
     tool: dict[str, object] = {
         "name": skill.name,
         "description": (
             f"{skill.description} Approval model: {skill.approval_model or 'unspecified'}. "
-            f"Execution modes: {mode_list}. Side effects: {effect_list}."
+            f"Execution modes: {mode_list}. Side effects: {effect_list}. "
+            f"Network egress: {egress_list}."
         ),
         "inputSchema": tool_input_schema(skill),
         "annotations": {
