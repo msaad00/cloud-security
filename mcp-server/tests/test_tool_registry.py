@@ -88,7 +88,6 @@ class TestToolDefinition:
         assert skill.execution_modes == ("jit", "ci", "mcp", "persistent")
         assert skill.side_effects == ("none",)
         assert skill.network_egress == ()
-        assert skill.network_egress == ()
         assert skill.caller_roles == ()
         assert skill.approver_roles == ()
         assert skill.min_approvers is None

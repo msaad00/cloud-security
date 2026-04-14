@@ -149,7 +149,6 @@ def discover_skills(root: Path | None = None) -> list[SkillSpec]:
                 input_formats=_parse_modes(metadata.get("input_formats")),
                 output_formats=_parse_modes(metadata.get("output_formats")),
                 network_egress=_parse_modes(metadata.get("network_egress")),
-                network_egress=_parse_modes(metadata.get("network_egress")),
                 caller_roles=_parse_modes(metadata.get("caller_roles")),
                 approver_roles=_parse_modes(metadata.get("approver_roles")),
                 min_approvers=int(metadata["min_approvers"]) if metadata.get("min_approvers") else None,
