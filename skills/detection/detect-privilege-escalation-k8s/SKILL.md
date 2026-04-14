@@ -1,23 +1,16 @@
 ---
 name: detect-privilege-escalation-k8s
 description: >-
-  Detect Kubernetes privilege escalation patterns in OCSF 1.8 API Activity
-  events (class 6003) or the native enriched Kubernetes activity shape
-  produced by ingest-k8s-audit-ocsf. Reads normalised kube-apiserver audit
-  events, groups them by actor (service account or user) over a sliding
-  window, and fires OCSF 1.8 Detection Finding (class 2004) events by
-  default for four patterns: (1) service-account secret enumeration followed
-  by get (MITRE T1552.007 Container API), (2) service-account exec into a
-  pod (MITRE T1611 Escape to Host), (3) creation of a ClusterRoleBinding or
-  RoleBinding by a non-admin principal (MITRE T1098 Account Manipulation),
-  and (4) token-review or token-request self-grant by a service account
-  (MITRE T1550.001 Application Access Token). Use when the user mentions
-  Kubernetes threat detection, K8s privilege escalation, container escape,
-  RBAC abuse, service account compromise, or kube-apiserver audit analysis.
-  Do NOT use on raw audit logs — pipe them through ingest-k8s-audit-ocsf
-  first. Do NOT use for CloudTrail / GCP / Azure detection (those need their
-  own detectors — roadmap). Do NOT use as a compliance check; this is an
-  active detection skill that emits findings on observed behaviour.
+  Detect Kubernetes privilege-escalation patterns from normalized
+  kube-apiserver audit events in OCSF or native mode. Fires on four
+  high-signal behaviors: service-account secret enumeration plus read
+  (T1552.007), service-account pod exec (T1611), non-admin role-binding
+  creation (T1098), and token self-grant flows (T1550.001). Use when the
+  user mentions Kubernetes threat detection, RBAC abuse, service-account
+  compromise, container escape, or kube-apiserver audit analysis. Do NOT use
+  on raw audit logs — pipe them through ingest-k8s-audit-ocsf first. Do NOT
+  use for CloudTrail, GCP, or Azure detection. Do NOT use as a compliance
+  check; this emits findings on observed behavior.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent

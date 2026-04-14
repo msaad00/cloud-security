@@ -27,6 +27,9 @@ The format is loosely based on Keep a Changelog.
 
 ### Changed
 
+- trimmed the handful of overlong `SKILL.md` frontmatter descriptions so tool-selection metadata stays concise for Claude, Codex, Cursor, Windsurf, Cortex, and MCP clients.
+- added optional `network_egress` skill metadata, exposed it through the MCP tool registry, and documented it in the skill/runtime contracts for sandbox-aware wrappers.
+- added an explicit `## Do NOT do` anti-pattern section to `iam-departures-remediation` and surfaced network egress allowlist hints for the write-capable workflow.
 - Expanded the coverage registry and framework mapping docs to track Okta, Entra / Graph, and Google Workspace as first-class OCSF identity-ingestion sources and detections.
 - Expanded `ingest-okta-system-log-ocsf` to cover the verified Okta Verify push and denial event families needed for narrow MFA fatigue detection.
 - Reframed the repo contract so OCSF remains a first-class interoperability option, but not a mandatory storage or execution model; the stable internal contract is now explicitly source truth -> canonical model -> `native` / `ocsf` / `bridge` output.

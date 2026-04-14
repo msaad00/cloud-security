@@ -37,6 +37,10 @@ Optional:
 - `input_formats`
 - `output_formats`
 
+Optional:
+
+- `network_egress`
+
 Rules:
 
 - `name` must match `^[a-z0-9-]+$`
@@ -79,6 +83,11 @@ Rules:
   - `ocsf`
   - `bridge`
 - every skill must declare the formats it supports today, even if only one mode is implemented
+- `network_egress`, when present, must be a comma-separated list of hostnames or wildcard hostnames such as:
+  - `api.workday.com`
+  - `*.snowflakecomputing.com`
+  - `*.databricks.com`
+  - `*.clickhouse.cloud`
 
 ## Required language
 
@@ -88,6 +97,9 @@ Each `SKILL.md` must contain both:
 - `Do NOT use`
 
 This keeps routing explicit and guardrails visible for Claude, Codex, Cursor, Windsurf, Cortex Code CLI, and other MCP-aware agents.
+
+Write-capable skills should also include a body-level `## Do NOT do` section for
+operator anti-patterns that must never be bypassed.
 
 ## Required references
 

@@ -12,6 +12,7 @@ Each shipped `SKILL.md` now declares:
 - `approval_model`
 - `execution_modes`
 - `side_effects`
+- optional `network_egress`
 
 Agents and wrappers should treat those fields as part of the runtime contract, not optional documentation.
 

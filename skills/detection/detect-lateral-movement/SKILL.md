@@ -1,22 +1,15 @@
 ---
 name: detect-lateral-movement
 description: >-
-  Detect cloud lateral movement by joining OCSF 1.8 API Activity events
-  from cloud audit ingestors (class 6003) with OCSF 1.8 Network Activity
-  events from cloud flow-log ingestors (class 4001) in a single
-  detection. Correlates a recent privileged identity pivot event with
-  accepted east-west traffic to an internal destination — the canonical
-  post-access movement pattern. Emits OCSF 1.8 Detection Finding (class
-  2004) with MITRE ATT&CK T1021 Remote Services and T1078.004 Cloud
-  Accounts inside finding_info.attacks[]. Multi-source, cross-cloud
-  detection that proves the OCSF fan-out architecture where one detector
-  consumes multiple ingest streams. Use when the user mentions lateral
-  movement, east-west pivot, cloud identity pivot followed by internal
-  traffic, or wants to detect attackers moving between cloud resources
-  after initial access. Do NOT use on raw logs — pipe audit and network
-  telemetry through their respective ingestion skills first. Do NOT
-  use for pre-compromise detection. Do NOT use as an exfiltration
-  detector — public internet destinations are deliberately filtered out.
+  Detect cloud lateral movement by joining normalized audit and flow telemetry
+  in native or OCSF mode. Correlates a recent privileged identity pivot with
+  accepted east-west traffic to an internal destination and emits a detection
+  finding aligned to MITRE ATT&CK T1021 and T1078.004. Use when the user
+  mentions lateral movement, east-west pivot, cloud identity abuse followed
+  by internal traffic, or wants to detect attackers moving between cloud
+  resources after initial access. Do NOT use on raw logs — pipe audit and
+  network telemetry through their respective ingestion skills first. Do NOT
+  use for pre-compromise detection. Do NOT use as an exfiltration detector.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
