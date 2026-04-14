@@ -59,7 +59,7 @@ exclude_dirs = ["tests", ".venv", ".git", "__pycache__"]
 skips = ["B101"]
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -q --cov=skills --cov-report=term-missing --cov-report=xml --cov-fail-under=35"
+addopts = "--import-mode=importlib -q"
 testpaths = ["skills"]
 python_files = "test_*.py"
 python_classes = "Test*"

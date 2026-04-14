@@ -59,10 +59,10 @@ For the full source / asset / framework crosswalk, see [docs/USE_CASES.md](docs/
 | **MCP** | you want Claude, Codex, Cursor, Windsurf, or Cortex Code CLI to call the same skills | agent workflows, tool-driven investigations, guarded remediation |
 | **CI** | you want the same skills in pull requests or scheduled checks | SARIF generation, benchmark snapshots, policy gates |
 | **SIEM / lakehouse** | you want normalized findings, evidence, or audit records in an existing store | Splunk, Sentinel, Chronicle, Elastic, Snowflake, ClickHouse |
-| **Persistent runner** | you want scheduled or event-driven operation | serverless, queue-driven, or batch runners around the same stateless skills |
+| **Persistent runner** | you want scheduled or event-driven operation | serverless, queue-driven, or batch runners around the same stateless skills, including the shipped [`runners/aws-s3-sqs-detect`](runners/aws-s3-sqs-detect/) reference template |
 
 The important distinction is:
-- **shipped today**: stateless skills, MCP wrapper, CI paths, and the repo-owned IAM departures audit path in DynamoDB + S3
+- **shipped today**: stateless skills, MCP wrapper, CI paths, the repo-owned IAM departures audit path in DynamoDB + S3, and a generic AWS reference runner template under [`runners/`](runners/)
 - **supported integration pattern**: customer-controlled sinks like Snowflake / Snowpipe, Security Lake, ClickHouse, or BigQuery via append-only runners and sink layers
 - **not shipped yet**: a generic sink / runner framework for every skill family
 
@@ -197,7 +197,11 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full layered design, 
 
 The important rule is that the **skill code does not change between modes**. `SKILL.md + src/ + tests/` stays the product; the runner, pipeline, or MCP wrapper is only the access path.
 
-`execution_modes: persistent` means the skill is safe to embed in a persistent runner or serverless loop. It does **not** mean this repo already ships a dedicated daemon, queue worker, or sink for that skill. Today the only fully shipped persistent workflow is `iam-departures-remediation`; the broader runner and sink layer remains an explicit roadmap item.
+`execution_modes: persistent` means the skill is safe to embed in a persistent runner or serverless loop. It does **not** mean this repo already ships a dedicated daemon, queue worker, or sink for that skill. Today the repo ships:
+- the fully owned `iam-departures-remediation` event-driven workflow
+- a generic AWS reference runner template in [`runners/aws-s3-sqs-detect`](runners/aws-s3-sqs-detect/)
+
+Broader multi-sink and multi-cloud runner coverage remains an explicit roadmap item.
 
 ## Safety model
 

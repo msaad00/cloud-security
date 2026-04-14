@@ -70,7 +70,7 @@ Use it when the README feels too high-level and `skills/README.md` feels too cat
 | Topic | Shipped today | Planned / contract-supported |
 |---|---|---|
 | Native / OCSF dual mode | selected ingest and detect skills, plus native-first discovery | repo-wide rollout across remaining ingest/detect paths |
-| Persistent execution | IAM departures event-driven path | generic runners for broader ingest → detect → sink loops |
+| Persistent execution | IAM departures event-driven path, plus `runners/aws-s3-sqs-detect` | broader multi-sink and multi-cloud runner coverage |
 | Audit sinks | IAM departures dual-write to DynamoDB + S3 | external customer sinks like Snowflake / Snowpipe, Security Lake, ClickHouse, BigQuery |
 | Visuals | repo architecture, detection pipeline, IAM departures workflow + data flow | deeper source / asset / plug-in visuals as the surface grows |
 
