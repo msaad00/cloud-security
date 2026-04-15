@@ -1,0 +1,22 @@
+{
+  "finding_uid": "string",
+  "event_uid": "string",
+  "provider": "string",
+  "account_uid": "string",
+  "session_uid": "string",
+  "actor_name": "string",
+  "anchor_operation": "string",
+  "src_instance_uid": "string",
+  "src_ip": "string",
+  "dst_ip": "string",
+  "dst_port": "int",
+  "traffic_bytes": "bigint",
+  "first_seen_time_ms": "bigint",
+  "last_seen_time_ms": "bigint",
+  "finding_time_ms": "bigint",
+  "correlation_window_seconds": "int",
+  "finding_type": "string",
+  "primary_technique_uid": "string",
+  "secondary_technique_uid": "string",
+  "finding_json": "string"
+}

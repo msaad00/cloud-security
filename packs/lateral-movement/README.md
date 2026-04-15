@@ -1,10 +1,10 @@
 # lateral-movement query pack
 
-Warehouse-native Snowflake implementation of the same detection intent as [`skills/detection/detect-lateral-movement`](../../skills/detection/detect-lateral-movement/SKILL.md).
+Warehouse-native SQL implementations of the same detection intent as [`skills/detection/detect-lateral-movement`](../../skills/detection/detect-lateral-movement/SKILL.md).
 
 Use this pack when:
 - your lake already stores OCSF-shaped API Activity (`6003`) and Network Activity (`4001`) rows
-- you want the correlation to run inside Snowflake with zero egress
+- you want the correlation to run inside Snowflake or Databricks SQL with zero egress
 - you want OCSF-compatible finding rows without piping data through Python first
 
 Do not use this pack when:
@@ -14,7 +14,10 @@ Do not use this pack when:
 
 ## Input contract
 
-This SQL expects a pre-existing Snowflake table or view with a single `raw_json VARIANT` column containing one OCSF 1.8 event per row.
+The shipped SQL files expect a pre-existing table or view containing one OCSF 1.8 event per row:
+
+- `snowflake.sql`: `raw_json VARIANT`
+- `databricks.sql`: `raw_json STRING`
 
 Minimum event families:
 - API Activity (`class_uid = 6003`) for identity-pivot anchors
@@ -28,14 +31,17 @@ The pack applies the same core thresholds as the Python detector:
 
 ## Run
 
-Set the source table, then run the SQL in Snowflake:
+Set the source table, then run the SQL in your warehouse:
 
 ```sql
 SET source_table = 'SECURITY_EVENTS_OCSF';
 SET lookback_hours = 24;
 ```
 
-Then execute [`snowflake.sql`](./snowflake.sql).
+Then execute one of:
+
+- [`snowflake.sql`](./snowflake.sql)
+- [`databricks.sql`](./databricks.sql)
 
 If your column is not named `raw_json`, create a small view that aliases it:
 
@@ -54,10 +60,11 @@ The query returns one row per deterministic `(provider, session_uid, dst_ip, dst
 
 The locked output columns and types are listed in:
 - [`golden/expected_columns.json`](./golden/expected_columns.json)
-- [`golden/expected_column_types.json`](./golden/expected_column_types.json)
+- [`golden/expected_column_types.json`](./golden/expected_column_types.json) for Snowflake
+- [`golden/expected_column_types_databricks.json`](./golden/expected_column_types_databricks.json) for Databricks
 
 ## Notes
 
-- This pack keeps the data in Snowflake, but the detection logic stays aligned with the shipped Python skill.
+- This pack keeps the data in the warehouse, but the detection logic stays aligned with the shipped Python skill.
 - The SQL is intentionally explicit instead of abstracted through macros so operators can audit it directly.
 - This pack is read-only. Persisting the findings is a separate step, for example through `sink-snowflake-jsonl`.
