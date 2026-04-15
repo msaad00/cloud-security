@@ -127,8 +127,10 @@ def _insert_rows(table_name: str, rows: list[PreparedRow]) -> int:
         cursor = conn.cursor()
         try:
             cursor.executemany(
+                # Bandit flags dynamic SQL strings generically, but the only interpolated
+                # value here is the already-validated table identifier path.
                 (
-                    f"INSERT INTO {table_name} "
+                    f"INSERT INTO {table_name} "  # nosec B608
                     "(payload, schema_mode, event_uid, finding_uid) "
                     "VALUES (PARSE_JSON(%s), %s, %s, %s)"
                 ),
