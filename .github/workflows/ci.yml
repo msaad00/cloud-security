@@ -240,7 +240,6 @@ jobs:
       - name: Export full-lock CycloneDX SBOM
         run: |
           uv export \
-            --frozen \
             --preview-features sbom-export \
             --format cyclonedx1.5 \
             --all-groups \
