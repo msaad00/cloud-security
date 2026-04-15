@@ -24,6 +24,7 @@ SEVERITY_MEDIUM = _INGEST.SEVERITY_MEDIUM
 SKILL_NAME = _INGEST.SKILL_NAME
 TYPE_UID = _INGEST.TYPE_UID
 convert_finding = _INGEST.convert_finding
+convert_finding_native = _INGEST.convert_finding_native
 extract_attacks = _INGEST.extract_attacks
 ingest = _INGEST.ingest
 iter_raw_findings = _INGEST.iter_raw_findings
@@ -321,6 +322,23 @@ class TestConvertFinding:
         assert raw["product"] == "aws-security-hub"
         assert "Resources" not in raw  # pointer only
 
+    def test_native_output_has_no_ocsf_envelope(self):
+        native = convert_finding_native(_minimal_asff())
+        assert native["schema_mode"] == "native"
+        assert native["record_type"] == "detection_finding"
+        assert native["provider"] == "AWS"
+        assert native["title"] == "Unauthorized API call from outside AWS"
+        assert "class_uid" not in native
+        assert "category_uid" not in native
+        assert "metadata" not in native
+
+    def test_native_and_ocsf_share_same_uid_basis(self):
+        raw = _minimal_asff(asff_id="ID-SAME")
+        native = convert_finding_native(raw)
+        ocsf = convert_finding(raw)
+        assert native["event_uid"] == ocsf["metadata"]["uid"] == "ID-SAME"
+        assert native["finding_uid"] == ocsf["finding_info"]["uid"]
+
 
 # ── Stream parsing ───────────────────────────────────────────────
 
@@ -380,6 +398,17 @@ class TestIngestEndToEnd:
         payload = json.dumps({"Findings": [_minimal_asff(asff_id=f"F{i}") for i in range(5)]})
         out = list(ingest([payload]))
         assert len(out) == 5
+
+    def test_native_output_mode_emits_enriched_findings(self):
+        payload = json.dumps({"Findings": [_minimal_asff(asff_id=f"F{i}") for i in range(2)]})
+        out = list(ingest([payload], output_format="native"))
+        assert len(out) == 2
+        first = out[0]
+        assert first["schema_mode"] == "native"
+        assert first["record_type"] == "detection_finding"
+        assert first["provider"] == "AWS"
+        assert "class_uid" not in first
+        assert "metadata" not in first
 
 
 # ── Golden fixture parity ────────────────────────────────────────
