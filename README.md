@@ -29,7 +29,17 @@ For the full source, asset, framework, and runtime crosswalk, see [docs/USE_CASE
 
 ## Quick Run
 
-Start with the bundled Kubernetes audit fixture and generate SARIF in three clear steps:
+Start with the bundled Kubernetes audit fixture and generate SARIF in one shot:
+
+```bash
+python skills/ingestion/ingest-k8s-audit-ocsf/src/ingest.py \
+  skills/detection-engineering/golden/k8s_audit_raw_sample.jsonl \
+  | python skills/detection/detect-privilege-escalation-k8s/src/detect.py \
+  | python skills/view/convert-ocsf-to-sarif/src/convert.py \
+  > findings.sarif
+```
+
+If you want to inspect each stage separately, use throwaway files under `/tmp`:
 
 ```bash
 python skills/ingestion/ingest-k8s-audit-ocsf/src/ingest.py \
@@ -44,6 +54,8 @@ python skills/view/convert-ocsf-to-sarif/src/convert.py \
   /tmp/k8s-findings.jsonl \
   > findings.sarif
 ```
+
+`/tmp` here just means scratch files for debugging. The final output you keep is `findings.sarif`.
 
 If you want the repo-owned native wire format instead of OCSF:
 
