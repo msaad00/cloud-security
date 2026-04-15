@@ -2,6 +2,8 @@
 
 This document is the load-bearing design contract for `cloud-ai-security-skills`. Every future PR is reviewed against it. If you need to deviate, update this doc *in the same PR* — the contract drifts by design, never by accident.
 
+This file is the design contract. It explains how the repo is supposed to work and what future changes must preserve. [`DIAGRAMS.md`](./DIAGRAMS.md) is the visual companion: it indexes the small set of readable SVGs used in rendered docs.
+
 - **Wire format contract** — see [`../skills/detection-engineering/OCSF_CONTRACT.md`](../skills/detection-engineering/OCSF_CONTRACT.md)
 - **Sink / persistence contract** — see [`./SINK_CONTRACT.md`](./SINK_CONTRACT.md) *(lands with PR T)*
 - **Runner / streaming contract** — see [`./RUNNER_CONTRACT.md`](./RUNNER_CONTRACT.md) *(lands with PR V)*
@@ -57,47 +59,31 @@ The repo cannot assume cloud APIs stay still. Providers deprecate fields, add en
 
 This is how the repo stays secure and reliable without turning every skill into an over-general abstraction layer.
 
-## 3. The 9 layers
+## 3. Layer model
 
-```
- ┌───────────────────────────────────────────────────────────────────┐
- │ L0  SOURCES         raw vendor formats (CloudTrail, VPC Flow,     │
- │                     Okta, Ramp, Snowflake audit, K8s audit, ...)  │
- ├───────────────────────────────────────────────────────────────────┤
- │ L1  INGEST          raw → canonical → native / OCSF / bridge      │
- │                     ingest-cloudtrail-ocsf, ingest-ramp-ocsf, ... │
- ├───────────────────────────────────────────────────────────────────┤
-│ L2  DISCOVER /      inventory + context                           │
-│     ENRICH          discover-environment, discover-ai-bom,        │
-│                     discover-control-evidence,                    │
-│                     discover-cloud-control-evidence,              │
-│                     enrich-asset-inventory, enrich-geoip,         │
-│                     enrich-mitre-navigator, enrich-pii-redact     │
- ├───────────────────────────────────────────────────────────────────┤
- │ L3  DETECT          canonical / OCSF → native / OCSF findings     │
- │                     detect-lateral-movement, detect-*             │
- ├───────────────────────────────────────────────────────────────────┤
- │ L4  EVALUATE        raw / canonical → compliance result + evidence│
- │                     cspm-*-cis-benchmark, evaluate-nist-ai-rmf    │
- ├───────────────────────────────────────────────────────────────────┤
- │ L5  REMEDIATE       Finding → IaC patch / SOAR action             │
- │                     iam-departures-remediation, revoke-key-*      │
- ├───────────────────────────────────────────────────────────────────┤
- │ L6  CONVERT         OCSF → other wire formats for delivery        │
- │                     convert-ocsf-to-sarif, to-sigma, to-jira,     │
- │                     to-mermaid-attack-flow                        │
- ├───────────────────────────────────────────────────────────────────┤
- │ L7  SINKS (opt)     OCSF → persisted store                        │
- │                     sink-snowflake, sink-security-lake,           │
- │                     sink-clickhouse, sink-bigquery                │
- ├───────────────────────────────────────────────────────────────────┤
- │ L8  QUERY / VIZ     SQL packs + Grafana packs + Cortex prompts    │
- │                     query-mitre-heatmap, cortex-triage-prompts    │
- ├───────────────────────────────────────────────────────────────────┤
- │ L9  AGENT SURFACE   mcp-server exposes every skill as a tool      │
- │                     → Claude Code, Cortex Code, Agent SDK         │
- └───────────────────────────────────────────────────────────────────┘
-```
+The repo is easiest to read as **six shipped skill layers**, plus **three edge/runtime layers** that sit around the pure skills.
+
+![Repository architecture](./images/repo-architecture.svg)
+
+### Shipped skill layers
+
+| Layer | Primary job | Current category |
+|---|---|---|
+| L1 | normalize one source into a stable event stream | `skills/ingestion/` |
+| L2 | inventory, evidence, AI BOM, and discovery context | `skills/discovery/` |
+| L3 | deterministic attack-pattern findings | `skills/detection/` |
+| L4 | posture and benchmark evaluation | `skills/evaluation/` |
+| L5 | guarded write paths with HITL and audit | `skills/remediation/` |
+| L6 | downstream export and conversion | `skills/view/` |
+
+### Edge and runtime layers
+
+| Layer | Role | Current state |
+|---|---|---|
+| L0 | external sources and vendor APIs | outside the repo boundary |
+| L7 | sinks and persistence edges | contract and patterns documented; generic sink family not fully shipped |
+| L8 | query packs and warehouse-native analytics | planned |
+| L9 | agent/runtime surface (`mcp-server`, runners, wrappers) | shipped as thin wrappers around the same skill contract |
 
 The repo operates across four schema modes:
 
@@ -121,31 +107,27 @@ For the detailed contract, see:
 - [`STATE_AND_TIMELINE_MODEL.md`](./STATE_AND_TIMELINE_MODEL.md)
 - [`../skills/detection-engineering/OCSF_CONTRACT.md`](../skills/detection-engineering/OCSF_CONTRACT.md)
 
-### Visuals
+### How to read this doc
 
-For quick orientation, use the visual set in [`DIAGRAMS.md`](./DIAGRAMS.md):
-
-- **Runtime surfaces** — [`runtime-surfaces.svg`](./images/runtime-surfaces.svg)
-- **Repo architecture** — [`repo-architecture.svg`](./images/repo-architecture.svg)
-- **IAM departures data flow** — [`iam-departures-data-flow.svg`](./images/iam-departures-data-flow.svg)
-- **Detection pipeline** — [`detection-pipeline.svg`](./images/detection-pipeline.svg)
-
-The rule for this repo is simple: keep the architecture readable in Markdown, and keep polished SVGs in `docs/images/` for rendered docs.
+- `ARCHITECTURE.md` is the design contract and review baseline.
+- `DIAGRAMS.md` is the visual index.
+- the SVGs should simplify the design, not replace it
+- if a diagram and this doc disagree, this doc wins until both are updated in the same PR
 
 ### Layer status snapshot
 
-| Layer | Category | Status | Skills shipped | Roadmap |
-|---|---|---|---|---|
-| L0 | sources | (external) | n/a | vendor stories #30–#36, Ramp (PR Y), Snowflake audit (PR Z) |
-| L1 | `ingest-*` | **shipping** | cloudtrail, aws-vpc-flow, gcp-vpc-flow, azure-nsg-flow, guardduty, security-hub, gcp-scc, azure-defender, gcp-audit, azure-activity, k8s-audit, mcp-proxy | okta, github, workspace, slack, ramp |
-| L2 | `discovery/` + `enrich-*` | **shipping / planned** | discover-environment, discover-ai-bom, discover-control-evidence, discover-cloud-control-evidence | PR X (asset-inventory, geoip, mitre-navigator, **pii-redact is P0 before any sink in regulated env**) |
-| L3 | `detect-*` | **shipping** | lateral-movement, privesc-k8s, sensitive-secret-read-k8s, mcp-tool-drift | credential-access per cloud, unusual-assume-role, vector-store-poisoning |
-| L4 | `evaluate-*` | **shipping** | cspm-aws/gcp/azure-cis-benchmark, k8s-security-benchmark, container-security | evaluate-cis-aws-foundations (#29), NIST AI RMF, SOC2, PCI |
-| L5 | `remediate-*` | **shipping** | iam-departures-remediation | auto-close-exposed-s3, revoke-long-lived-key, patch-inspector-finding |
-| L6 | `convert-*` | **shipping** | ocsf-to-sarif, ocsf-to-mermaid-attack-flow | to-sigma, to-splunk-cim, to-jira, to-opa-rego |
-| L7 | `sinks/` | **planned** | none | PR T (snowflake), PR W (security-lake), PR AA (clickhouse), bigquery |
-| L8 | `query/` + packs | **planned** | none | PR T ships the first Cortex query pack alongside sink-snowflake |
-| L9 | `mcp-server/` | **shipping** | thin stdio wrapper | tighter input schemas, HTTP/SSE transport, remediation-safe wrappers |
+| Layer | Status | Current shape |
+|---|---|---|
+| L0 external sources | external | cloud APIs, raw logs, SaaS identity feeds, lakehouse tables |
+| L1 ingest | shipping | 15+ source-specific ingesters plus `source-snowflake-query`; ingest and detect are now fully dual-mode |
+| L2 discover | shipping | environment graph, AI BOM, cloud control evidence, control evidence |
+| L3 detect | shipping | 9 shipped detectors across cloud, identity, Kubernetes, and MCP drift |
+| L4 evaluate | shipping | 8 benchmark and posture skills across AWS, GCP, Azure, Kubernetes, containers, GPU, and model-serving paths |
+| L5 remediate | shipping | IAM departures is the current flagship write path |
+| L6 view | shipping | SARIF and Mermaid attack-flow exports |
+| L7 sinks | planned / partial patterns | customer-controlled persistence patterns are documented; generic sink family is not fully shipped |
+| L8 query packs | planned | warehouse-native SQL packs remain future work |
+| L9 agent/runtime surfaces | shipping | `mcp-server`, CLI, CI, and runners call the same skill contract |
 
 ## 4. Two execution modes
 

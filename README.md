@@ -60,12 +60,13 @@ python skills/ingestion/ingest-k8s-audit-ocsf/src/ingest.py \
 
 | Mode | What it means | Use it when... |
 |---|---|---|
-| `native` | repo-owned JSONL with fields like `schema_mode`, `canonical_schema_version`, `record_type`, and stable UIDs | you want the repo's stable schema without an interoperability envelope |
+| `native` | repo-owned external wire format in JSONL, with fields like `schema_mode`, `canonical_schema_version`, `record_type`, and stable UIDs | you want the repo's stable schema without an interoperability envelope |
 | `ocsf` | OCSF JSONL pinned to the repo's OCSF contract | you want a standard external schema for SIEMs, exports, or downstream tooling |
 | `canonical` | internal-only normalization model | you are reading the docs or implementation, not choosing a CLI output mode |
 | `bridge` | interoperable output with native context preserved | you need both standard fields and repo context in one payload |
 
 `native` is not raw vendor JSON and not an OCSF envelope with fields stripped out.
+`native` = repo-owned external wire format. See [docs/NATIVE_VS_OCSF.md](docs/NATIVE_VS_OCSF.md) and [docs/CANONICAL_SCHEMA.md](docs/CANONICAL_SCHEMA.md).
 
 ## Flagship Example
 
@@ -103,7 +104,7 @@ Read next:
 |---|---|---|
 | Runtime surfaces | CLI, CI, MCP, `runners/aws-s3-sqs-detect`, IAM departures workflow | more multi-cloud runner templates |
 | Audit sinks | IAM departures dual-write to DynamoDB + S3 | customer sinks like Snowflake, Security Lake, ClickHouse, BigQuery |
-| Schema modes | native, canonical, OCSF, bridge contract | dual-mode rollout across remaining ingest / detect paths |
+| Schema modes | native, canonical, OCSF, bridge contract; ingest and detect are fully dual-mode | extend dual-mode patterns to more families where appropriate |
 | Remediation | IAM departures with HITL and audit | broader remediation families |
 
 <details>
