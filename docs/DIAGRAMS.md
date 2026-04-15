@@ -1,6 +1,8 @@
 # Diagrams
 
-Keep the markdown source diagrams lightweight and reviewable, then pair them with polished SVGs for docs pages and PRs.
+`ARCHITECTURE.md` is the design contract. This file is the visual companion.
+
+Keep markdown diagrams lightweight and reviewable, then pair them with polished SVGs for docs pages and PRs. If a diagram becomes dense enough to overlap or require zooming, simplify it instead of adding more boxes.
 
 ## Visual set
 
@@ -16,3 +18,5 @@ Keep the markdown source diagrams lightweight and reviewable, then pair them wit
 - Keep ASCII or Mermaid diagrams in markdown for git-friendly diffs.
 - Keep the polished SVGs in `docs/images/`.
 - Prefer 2-3 high-signal diagrams over a large diagram dump.
+- One diagram should answer one question. Do not mix repo structure, runtime surfaces, and roadmap detail in the same visual.
+- The flagship remediation diagram can be more detailed than the repo overview, but the repo overview should stay readable in GitHub preview without zooming.
