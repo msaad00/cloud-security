@@ -116,7 +116,7 @@ Read next:
 |---|---|---|
 | Runtime surfaces | CLI, CI, MCP, `runners/aws-s3-sqs-detect`, IAM departures workflow | more multi-cloud runner templates |
 | Audit sinks | IAM departures dual-write to DynamoDB + S3 | customer sinks like Snowflake, Security Lake, ClickHouse, BigQuery |
-| Schema modes | native, canonical, OCSF, bridge contract; ingest and detect are fully dual-mode | extend dual-mode patterns to more families where appropriate |
+| Schema modes | native, canonical, OCSF, and bridge are all shipped; ingest and detect are fully dual-mode, while discovery uses native/bridge and evaluation, sinks, and remediation stay native-first | extend OCSF or bridge only where it materially improves interoperability without losing operational clarity |
 | Remediation | IAM departures with HITL and audit | broader remediation families |
 
 <details>
@@ -175,6 +175,7 @@ High-signal visuals:
 Operator and contributor docs:
 - [AGENTS.md](AGENTS.md)
 - [CLAUDE.md](CLAUDE.md)
+- [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md)
 - [docs/agent-integrations.md](docs/agent-integrations.md)
 - [skills/README.md](skills/README.md)
 - [docs/DEBUGGING.md](docs/DEBUGGING.md)
