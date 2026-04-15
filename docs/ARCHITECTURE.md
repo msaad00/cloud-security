@@ -5,8 +5,9 @@ This document is the load-bearing design contract for `cloud-ai-security-skills`
 This file is the design contract. It explains how the repo is supposed to work and what future changes must preserve. [`DIAGRAMS.md`](./DIAGRAMS.md) is the visual companion: it indexes the small set of readable SVGs used in rendered docs.
 
 - **Wire format contract** — see [`../skills/detection-engineering/OCSF_CONTRACT.md`](../skills/detection-engineering/OCSF_CONTRACT.md)
-- **Sink / persistence contract** — see [`./SINK_CONTRACT.md`](./SINK_CONTRACT.md) *(lands with PR T)*
-- **Runner / streaming contract** — see [`./RUNNER_CONTRACT.md`](./RUNNER_CONTRACT.md) *(lands with PR V)*
+- **Design rationale and product decisions** — see [`./DESIGN_DECISIONS.md`](./DESIGN_DECISIONS.md)
+- **Sink / persistence contract** — see [`./SINK_CONTRACT.md`](./SINK_CONTRACT.md)
+- **Runner / streaming contract** — see [`./RUNNER_CONTRACT.md`](./RUNNER_CONTRACT.md)
 - **Runtime isolation and trust boundaries** — see [`./RUNTIME_ISOLATION.md`](./RUNTIME_ISOLATION.md)
 - **SIEM indexing and dedupe guidance** — see [`./SIEM_INDEX_GUIDE.md`](./SIEM_INDEX_GUIDE.md)
 - **Canonical schema contract** — see [`./CANONICAL_SCHEMA.md`](./CANONICAL_SCHEMA.md)
@@ -36,16 +37,16 @@ This file is the design contract. It explains how the repo is supposed to work a
 
 These are the non-negotiables. Everything in §3–§8 exists to serve them.
 
-1. **Skills are pure functions.** Input JSONL → output JSONL. No side effects. No cloud API calls. No disk writes outside stdout. No hidden state.
+1. **Most skills are pure functions.** Input JSONL → output JSONL. No side effects. No cloud API calls. No disk writes outside stdout. No hidden state. Source, sink, and remediation skills are the explicit edge exceptions.
 2. **Side effects live at the edges.** Exactly four categories may have side effects: **L0 sources** (read raw), **L5 remediate** (write cloud APIs), **L7 sinks** (write storage), **runners** (drive loops). Everything else is pure.
 3. **The schema contract is the shared dependency.** Skills never import from each other. If two skills need the same logic, they each own a copy. Copy-paste beats coupling at this scale — the contract is the API, not the Python. For shared pipelines the contract may be OCSF; for stateful inventory and evidence it may be canonical or bridge mode.
 4. **Determinism.** Same input always produces the same output. Every finding UID is a content hash; no random UUIDs. Replayable ⇒ testable ⇒ idempotent sink merges.
 5. **Read-only by default.** A skill may only perform writes if it is prefixed `remediate-*` or `sink-*` and its `SKILL.md` carries an explicit "Do NOT use" clause describing the blast radius.
 6. **Least-privilege infra.** Every skill that talks to a cloud API ships the *minimum* IAM policy in `infra/iam_policies/`. Wildcard actions are a CI failure.
 7. **MCP-exposable by default.** Every skill must be wrappable as an MCP tool with zero code changes: stdin+args in, stdout out, non-zero exit on error, stderr for warnings. Skills that can't satisfy this don't ship.
-8. **Idempotent sinks.** Every sink does `MERGE ... ON finding_info.uid`. Re-runs converge. No blind-insert mode.
+8. **Replay-safe persistence.** Database sinks should be idempotent or transactionally safe; object-store sinks should use immutable new-object writes. Re-runs must converge operationally instead of surprising operators.
 9. **Dry-run everywhere writes happen.** `--dry-run` is mandatory for every `remediate-*` and `sink-*` skill. It prints the SQL / API calls it *would* make without making them.
-10. **Audit the auditor.** Every sink write and every remediation action emits *itself* as an OCSF Application Activity (6002) event, so the tool's own actions are findable in the same pipeline it feeds.
+10. **Machine-readable write summaries.** Every sink and remediation path must emit a deterministic machine-readable result summary to `stdout`. Some workflows may also feed those results back into an auditable event pipeline, but that is not yet universal across all write surfaces.
 
 ## 2.1 Validation, debugging, and API-drift policy
 
@@ -81,7 +82,7 @@ The repo is easiest to read as **six shipped skill layers**, plus **three edge/r
 | Layer | Role | Current state |
 |---|---|---|
 | L0 | external sources and vendor APIs | outside the repo boundary |
-| L7 | sinks and persistence edges | contract and patterns documented; generic sink family not fully shipped |
+| L7 | sinks and persistence edges | shipped in `skills/remediation/sink-*`; future re-home to top-level `sinks/` remains optional |
 | L8 | query packs and warehouse-native analytics | partial shipping |
 | L9 | agent/runtime surface (`mcp-server`, runners, wrappers) | shipped as thin wrappers around the same skill contract |
 
@@ -92,12 +93,17 @@ The repo operates across four schema modes:
 - **ocsf** for shared pipelines, SIEMs, and standard interoperability
 - **bridge** when OCSF transport helps but native or canonical detail still matters
 
-Most current ingest, detect, evaluate, view, and sink paths are still **OCSF-friendly JSONL**, but OCSF is no longer the only valid operating mode. Discovery and evidence paths may emit deterministic native or canonical artifacts, plus OCSF bridge events where that improves interoperability. The current discovery set already supports explicit bridge modes for `Cloud Resources Inventory Info [5023]` and `Live Evidence Info [5040]`.
+Most current ingest and detect paths are **fully dual-mode** and can emit either
+repo-native JSONL or OCSF JSONL. Discovery and evidence paths may emit
+deterministic native or canonical artifacts, plus OCSF bridge events where
+that improves interoperability. Evaluation, sink, and remediation outputs remain
+primarily native because they are repo-owned operational contracts rather than
+clean OCSF fits.
 
 Execution-mode note:
 - `execution_modes: persistent` means a skill is safe to embed in a persistent runner, queue consumer, scheduler, or serverless loop without changing the skill logic
 - it does **not** mean the repo already ships that runner, daemon, or sink for every skill
-- today, the broad runner/sink layer is still planned work; `iam-departures-remediation` is the main shipped exception with repo-owned event-driven infrastructure
+- today, the runner and sink layers are shipped as reference patterns, not as dedicated wrappers for every single skill family
 
 For the detailed contract, see:
 
@@ -119,14 +125,14 @@ For the detailed contract, see:
 | Layer | Status | Current shape |
 |---|---|---|
 | L0 external sources | external | cloud APIs, raw logs, SaaS identity feeds, lakehouse tables |
-| L1 ingest | shipping | 15+ source-specific ingesters plus `source-snowflake-query`; ingest and detect are now fully dual-mode |
+| L1 ingest | shipping | 15 source-specific ingesters plus 3 read-only source adapters; ingest and detect are fully dual-mode where OCSF-native parity makes sense |
 | L2 discover | shipping | environment graph, AI BOM, cloud control evidence, control evidence |
 | L3 detect | shipping | 9 shipped detectors across cloud, identity, Kubernetes, and MCP drift |
 | L4 evaluate | shipping | 8 benchmark and posture skills across AWS, GCP, Azure, Kubernetes, containers, GPU, and model-serving paths |
 | L5 remediate | shipping | IAM departures is the current flagship write path |
 | L6 view | shipping | SARIF and Mermaid attack-flow exports |
-| L7 sinks | planned / partial patterns | customer-controlled persistence patterns are documented; generic sink family is not fully shipped |
-| L8 query packs | partial shipping | first Snowflake pack shipped under `packs/`; broader warehouse-native pack framework remains future work |
+| L7 sinks | shipping | `sink-snowflake-jsonl`, `sink-clickhouse-jsonl`, and `sink-s3-jsonl` ship today under `skills/remediation/` |
+| L8 query packs | partial shipping | `packs/lateral-movement/` and `packs/privilege-escalation-k8s/` are shipped; broader pack coverage remains future work |
 | L9 agent/runtime surfaces | shipping | `mcp-server`, CLI, CI, and runners call the same skill contract |
 
 ## 4. Two execution modes
@@ -145,7 +151,7 @@ cat cloudtrail.json \
   > findings.sarif
 ```
 
-Used by: Claude Code ad-hoc analysis, CI, one-off investigations, compliance snapshots, `gh pr review` automation.
+Used by: Claude Code ad-hoc analysis, CI, one-off investigations, compliance snapshots, and local pipeline runs.
 
 Properties: zero infrastructure, no state, perfectly reproducible, no persistence, single-shot.
 
@@ -160,12 +166,14 @@ A **runner** (L9 driver, not a skill) drives the skills in a loop from a source 
                          └─ checkpoint state in DynamoDB / Snowflake STREAM
 ```
 
-Shipped reference runner:
+Shipped reference runners:
 ```
 runners/aws-s3-sqs-detect              # S3 -> ingest Lambda -> SQS -> detect Lambda -> DynamoDB dedupe -> SNS
+runners/gcp-gcs-pubsub-detect          # GCS -> ingest function -> Pub/Sub -> detect function -> Firestore dedupe
+runners/azure-blob-eventgrid-detect    # Blob -> Event Grid -> Service Bus -> handlers -> Table Storage dedupe
 ```
 
-Additional example runners:
+Future runner variants could follow the same contract:
 ```
 runners/runner-s3-to-snowflake          # S3 → skill → Snowflake COPY INTO
 runners/runner-eventbridge-to-security-lake   # EventBridge → skill → Parquet → Security Lake
@@ -226,10 +234,10 @@ cloud-ai-security-skills/
 │   ├── evaluation/           # L4
 │   ├── view/                 # L6
 │   └── remediation/          # L5
-├── sinks/                    # L7 — own top-level, side-effectful
-│   ├── sink-snowflake-ocsf/
-│   ├── sink-security-lake-ocsf/
-│   └── sink-clickhouse-ocsf/
+├── sinks/                    # optional future L7 re-home from skills/remediation/sink-*
+│   ├── sink-snowflake-jsonl/
+│   ├── sink-clickhouse-jsonl/
+│   └── sink-s3-jsonl/
 ├── runners/                  # Mode B drivers
 │   ├── runner-s3-to-snowflake/
 │   └── runner-eventbridge-to-security-lake/
@@ -250,6 +258,10 @@ cloud-ai-security-skills/
 ```
 
 **Rationale for separating `sinks/`, `runners/`, `mcp-server/`, and `packs/` from `skills/`:** the "skills are pure, edges have side effects" mental model becomes visible in the directory tree. A reviewer can tell at a glance whether a change touches pure code or effectful code. This is cheap documentation that pays for itself on every PR.
+
+Today, sinks still live under `skills/remediation/sink-*` for compatibility with
+the existing skill-discovery contract. The conceptual layer is already real even
+if the final directory re-home is deferred.
 
 The layered skill directories are now canonical. `skills/detection-engineering/`
 remains only as the shared OCSF contract and frozen-fixture namespace used by
