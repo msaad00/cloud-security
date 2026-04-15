@@ -1,0 +1,18 @@
+[
+  "finding_uid",
+  "event_uid",
+  "rule_name",
+  "severity_id",
+  "actor_name",
+  "namespace",
+  "target_name",
+  "resource_type",
+  "subresource",
+  "first_seen_time_ms",
+  "last_seen_time_ms",
+  "finding_time_ms",
+  "mitre_technique_uid",
+  "mitre_subtechnique_uid",
+  "finding_type",
+  "finding_json"
+]
