@@ -4,7 +4,8 @@ Input:  ASFF finding JSON — single findings, `{"Findings": [...]}` BatchImport
         wrapper, or EventBridge envelopes with
         `{"detail-type": "Security Hub Findings - Imported", "detail": {"findings": [...]}}`.
         Auto-detected.
-Output: JSONL of OCSF 1.8 Detection Finding events.
+Output: JSONL of OCSF 1.8 Detection Finding events by default, or the repo's
+        native enriched finding shape when --output-format native is selected.
 
 Security Hub is an aggregator that collects ASFF-formatted findings from
 GuardDuty, Inspector, Macie, Config, Firewall Manager, and third-party
@@ -26,6 +27,7 @@ from typing import Any, Iterable
 
 SKILL_NAME = "ingest-security-hub-ocsf"
 OCSF_VERSION = "1.8.0"
+CANONICAL_VERSION = "2026-04"
 
 # OCSF 1.8 Detection Finding (2004)
 CLASS_UID = 2004
@@ -289,12 +291,8 @@ def _short(s: str) -> str:
     return hashlib.sha256((s or "").encode()).hexdigest()[:8]
 
 
-def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
-    """Convert one ASFF finding into one OCSF Detection Finding event.
-
-    Callers MUST pre-validate with `validate_asff()`; this function assumes
-    the required fields are present.
-    """
+def _build_canonical_finding(raw: dict[str, Any]) -> dict[str, Any]:
+    """Convert one ASFF finding into the repo's canonical finding shape."""
     asff_id = raw["Id"]
     title = raw["Title"]
     desc = raw["Description"]
@@ -315,7 +313,7 @@ def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
     if resources_out and "region" in resources_out[0]:
         region = resources_out[0]["region"]
 
-    uid = f"det-shub-{_short(asff_id)}"
+    finding_uid = f"det-shub-{_short(asff_id)}"
 
     # Compliance passthrough
     compliance = raw.get("Compliance") or {}
@@ -324,59 +322,44 @@ def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
     compliance_reasons_list = compliance.get("StatusReasons", []) if isinstance(compliance, dict) else []
     compliance_reasons = ";".join(str((r or {}).get("ReasonCode", "")) for r in compliance_reasons_list if isinstance(r, dict))
 
-    observables: list[dict[str, Any]] = [
-        {"name": "shub.finding_id", "type": "Other", "value": asff_id},
-        {"name": "shub.product_arn", "type": "Other", "value": raw.get("ProductArn", "")},
-        {"name": "shub.generator_id", "type": "Other", "value": raw.get("GeneratorId", "")},
-        {"name": "shub.severity_label", "type": "Other", "value": label},
-        {"name": "shub.severity_normalized", "type": "Other", "value": str(normalized) if normalized is not None else ""},
-        {"name": "shub.types", "type": "Other", "value": ",".join(types)},
-        {"name": "aws.account", "type": "Other", "value": account_id},
-        {"name": "aws.region", "type": "Other", "value": region},
-    ]
-    if compliance_status:
-        observables.append({"name": "shub.compliance_status", "type": "Other", "value": compliance_status})
-    if compliance_control:
-        observables.append({"name": "shub.compliance_control", "type": "Other", "value": compliance_control})
-    if compliance_reasons:
-        observables.append({"name": "shub.compliance_reasons", "type": "Other", "value": compliance_reasons})
-
-    finding: dict[str, Any] = {
-        "activity_id": ACTIVITY_CREATE,
-        "category_uid": CATEGORY_UID,
-        "category_name": CATEGORY_NAME,
-        "class_uid": CLASS_UID,
-        "class_name": CLASS_NAME,
-        "type_uid": TYPE_UID,
+    return {
+        "schema_mode": "canonical",
+        "canonical_schema_version": CANONICAL_VERSION,
+        "record_type": "detection_finding",
+        "event_uid": asff_id,
+        "finding_uid": finding_uid,
+        "provider": "AWS",
+        "account_uid": account_id,
+        "region": region,
+        "time_ms": parse_ts_ms(updated),
         "severity_id": severity_to_id(severity),
         "status_id": STATUS_SUCCESS,
-        "time": parse_ts_ms(updated),
-        "metadata": {
-            "version": OCSF_VERSION,
-            "uid": asff_id or uid,
-            "product": {
-                "name": "cloud-ai-security-skills",
-                "vendor_name": "msaad00/cloud-ai-security-skills",
-                "feature": {"name": SKILL_NAME},
-            },
-            "labels": ["detection-engineering", "aws", "security-hub", "asff", "ingest", "passthrough"],
-        },
-        "finding_info": {
-            "uid": uid,
-            "title": title,
-            "desc": desc,
-            "types": types,
-            "first_seen_time": parse_ts_ms(first_seen),
-            "last_seen_time": parse_ts_ms(last_seen),
-            "attacks": attacks,
-        },
+        "status": "success",
+        "severity_label": label,
+        "severity_normalized": normalized,
+        "title": title,
+        "description": desc,
+        "finding_types": types,
+        "first_seen_time_ms": parse_ts_ms(first_seen),
+        "last_seen_time_ms": parse_ts_ms(last_seen),
+        "attacks": attacks,
         "resources": resources_out,
         "cloud": {
             "provider": "AWS",
             "account": {"uid": account_id},
             "region": region,
         },
-        "observables": observables,
+        "source": {
+            "kind": "aws.security-hub",
+            "finding_id": asff_id,
+            "product_arn": raw.get("ProductArn", ""),
+            "generator_id": raw.get("GeneratorId", ""),
+        },
+        "compliance": {
+            "status": compliance_status,
+            "control_id": compliance_control,
+            "reason_codes": compliance_reasons,
+        },
         "evidence": {
             "events_observed": 1,
             "first_seen_time": parse_ts_ms(first_seen),
@@ -391,7 +374,92 @@ def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
         },
     }
 
+
+def _build_observables(canonical: dict[str, Any]) -> list[dict[str, Any]]:
+    observables: list[dict[str, Any]] = [
+        {"name": "shub.finding_id", "type": "Other", "value": canonical["source"]["finding_id"]},
+        {"name": "shub.product_arn", "type": "Other", "value": canonical["source"]["product_arn"]},
+        {"name": "shub.generator_id", "type": "Other", "value": canonical["source"]["generator_id"]},
+        {"name": "shub.severity_label", "type": "Other", "value": canonical["severity_label"]},
+        {
+            "name": "shub.severity_normalized",
+            "type": "Other",
+            "value": str(canonical["severity_normalized"]) if canonical["severity_normalized"] is not None else "",
+        },
+        {"name": "shub.types", "type": "Other", "value": ",".join(canonical["finding_types"])},
+        {"name": "aws.account", "type": "Other", "value": canonical["account_uid"]},
+        {"name": "aws.region", "type": "Other", "value": canonical["region"]},
+    ]
+    compliance = canonical["compliance"]
+    if compliance["status"]:
+        observables.append({"name": "shub.compliance_status", "type": "Other", "value": compliance["status"]})
+    if compliance["control_id"]:
+        observables.append({"name": "shub.compliance_control", "type": "Other", "value": compliance["control_id"]})
+    if compliance["reason_codes"]:
+        observables.append({"name": "shub.compliance_reasons", "type": "Other", "value": compliance["reason_codes"]})
+    return observables
+
+
+def _render_ocsf_finding(canonical: dict[str, Any]) -> dict[str, Any]:
+    """Render the canonical Security Hub finding as OCSF Detection Finding."""
+    finding: dict[str, Any] = {
+        "activity_id": ACTIVITY_CREATE,
+        "category_uid": CATEGORY_UID,
+        "category_name": CATEGORY_NAME,
+        "class_uid": CLASS_UID,
+        "class_name": CLASS_NAME,
+        "type_uid": TYPE_UID,
+        "severity_id": canonical["severity_id"],
+        "status_id": canonical["status_id"],
+        "time": canonical["time_ms"],
+        "metadata": {
+            "version": OCSF_VERSION,
+            "uid": canonical["event_uid"],
+            "product": {
+                "name": "cloud-ai-security-skills",
+                "vendor_name": "msaad00/cloud-ai-security-skills",
+                "feature": {"name": SKILL_NAME},
+            },
+            "labels": ["detection-engineering", "aws", "security-hub", "asff", "ingest", "passthrough"],
+        },
+        "finding_info": {
+            "uid": canonical["finding_uid"],
+            "title": canonical["title"],
+            "desc": canonical["description"],
+            "types": canonical["finding_types"],
+            "first_seen_time": canonical["first_seen_time_ms"],
+            "last_seen_time": canonical["last_seen_time_ms"],
+            "attacks": canonical["attacks"],
+        },
+        "resources": canonical["resources"],
+        "cloud": {
+            "provider": canonical["provider"],
+            "account": {"uid": canonical["account_uid"]},
+            "region": canonical["region"],
+        },
+        "observables": _build_observables(canonical),
+        "evidence": canonical["evidence"],
+    }
     return finding
+
+
+def _render_native_finding(canonical: dict[str, Any]) -> dict[str, Any]:
+    """Render the canonical Security Hub finding as the repo's native enriched shape."""
+    native = dict(canonical)
+    native["schema_mode"] = "native"
+    native["source_skill"] = SKILL_NAME
+    native["output_format"] = "native"
+    return native
+
+
+def convert_finding(raw: dict[str, Any]) -> dict[str, Any]:
+    """Convert one ASFF finding into one OCSF Detection Finding event."""
+    return _render_ocsf_finding(_build_canonical_finding(raw))
+
+
+def convert_finding_native(raw: dict[str, Any]) -> dict[str, Any]:
+    """Convert one ASFF finding into the native enriched finding shape."""
+    return _render_native_finding(_build_canonical_finding(raw))
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +526,7 @@ def iter_raw_findings(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
         yield from _unwrap(obj)
 
 
-def ingest(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
+def ingest(stream: Iterable[str], output_format: str = "ocsf") -> Iterable[dict[str, Any]]:
     for raw in iter_raw_findings(stream):
         valid, reason = validate_asff(raw)
         if not valid:
@@ -468,7 +536,11 @@ def ingest(stream: Iterable[str]) -> Iterable[dict[str, Any]]:
             )
             continue
         try:
-            yield convert_finding(raw)
+            canonical = _build_canonical_finding(raw)
+            if output_format == "native":
+                yield _render_native_finding(canonical)
+            else:
+                yield _render_ocsf_finding(canonical)
         except Exception as e:
             print(f"[{SKILL_NAME}] skipping finding: convert error: {e}", file=sys.stderr)
             continue
@@ -478,13 +550,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Convert AWS Security Hub ASFF findings to OCSF 1.8 Detection Finding JSONL.")
     parser.add_argument("input", nargs="?", help="Input JSON/JSONL file. Defaults to stdin.")
     parser.add_argument("--output", "-o", help="Output JSONL file. Defaults to stdout.")
+    parser.add_argument("--output-format", choices=("ocsf", "native"), default="ocsf", help="Output shape. Defaults to ocsf.")
     args = parser.parse_args(argv)
 
     in_stream = sys.stdin if not args.input else open(args.input, "r", encoding="utf-8")
     out_stream = sys.stdout if not args.output else open(args.output, "w", encoding="utf-8")
 
     try:
-        for finding in ingest(in_stream):
+        for finding in ingest(in_stream, output_format=args.output_format):
             out_stream.write(json.dumps(finding, separators=(",", ":")) + "\n")
     finally:
         if args.input:

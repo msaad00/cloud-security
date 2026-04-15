@@ -15,12 +15,12 @@ approval_model: none
 execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
-output_formats: ocsf
+output_formats: ocsf, native
 ---
 
 # ingest-security-hub-ocsf
 
-Thin passthrough ingestion skill with ASFF validation: raw Security Hub ASFF JSON in → OCSF 1.8 Detection Finding (2004) JSONL out. Security Hub is an aggregator — it already collects findings from GuardDuty, Inspector, Macie, Config, Firewall Manager, and third-party products, all normalised to the same ASFF schema. This skill does one thing: validate that the ASFF required fields are present and transform them into the OCSF wire contract shared by every other skill in `detection-engineering/`.
+Thin passthrough ingestion skill with ASFF validation: raw Security Hub ASFF JSON in → canonical finding projection → OCSF 1.8 Detection Finding (2004) JSONL or native enriched finding JSONL out. Security Hub is an aggregator — it already collects findings from GuardDuty, Inspector, Macie, Config, Firewall Manager, and third-party products, all normalised to the same ASFF schema. This skill does one thing: validate that the ASFF required fields are present and transform them into the repo's stable finding contract.
 
 ## Wire contract
 
@@ -31,6 +31,25 @@ Reads any of the three shapes Security Hub emits:
 3. **EventBridge event envelope** — top-level `{"detail-type": "Security Hub Findings - Imported", "detail": {"findings": [...]}, ...}`; the skill auto-unwraps `detail.findings`.
 
 Writes OCSF 1.8 **Detection Finding** (`class_uid: 2004`, `category_uid: 2`). See [`../OCSF_CONTRACT.md`](../OCSF_CONTRACT.md) for the field-level pinning every event matches.
+
+When `--output-format native` is selected, it emits the same finding in the repo's native enriched shape with stable `event_uid`, normalized provider/account/severity fields, MITRE ATT&CK annotations, preserved compliance/resource context, and no OCSF envelope fields.
+
+## Native output format
+
+`--output-format native` returns one JSON object per Security Hub finding with:
+
+- `schema_mode: "native"`
+- `canonical_schema_version`
+- `record_type: "detection_finding"`
+- `event_uid` and `finding_uid`
+- `provider`, `account_uid`, `region`
+- `time_ms`
+- `severity_id`, `severity_label`, `severity_normalized`, `status_id`, `status`
+- `title`, `description`, `finding_types`
+- `attacks`, `resources`, `cloud`, `source`, `compliance`, and `evidence`
+
+The native shape keeps the same normalized semantics as the OCSF projection,
+but omits `class_uid`, `category_uid`, `type_uid`, and `metadata.product`.
 
 ## ASFF validation
 
@@ -87,6 +106,9 @@ When the ASFF finding carries a `Compliance` block (typical for Config rules, CI
 ```bash
 # Single finding
 python src/ingest.py asff.json > asff.ocsf.jsonl
+
+# Same input, native enriched output
+python src/ingest.py asff.json --output-format native > asff.native.jsonl
 
 # From a BatchImportFindings request body
 aws securityhub get-findings --max-results 100 | python src/ingest.py
