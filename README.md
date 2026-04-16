@@ -1,7 +1,7 @@
 # cloud-ai-security-skills
 
 [![CI](https://github.com/msaad00/cloud-ai-security-skills/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/msaad00/cloud-ai-security-skills/actions/workflows/ci.yml?query=branch%3Amain)
-[![Version](https://img.shields.io/badge/version-0.4.0-0ea5e9)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.5.0-0ea5e9)](CHANGELOG.md)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![OCSF 1.8](https://img.shields.io/badge/OCSF-1.8-22d3ee)](https://schema.ocsf.io/1.8.0)
@@ -187,8 +187,9 @@ Read next:
 
 | Topic | Shipped today | Planned / supported pattern |
 |---|---|---|
-| Runtime surfaces | CLI, CI, MCP, `runners/aws-s3-sqs-detect`, IAM departures workflow | more multi-cloud runner templates |
-| Audit sinks | IAM departures dual-write to DynamoDB + S3 | customer sinks like Snowflake, Security Lake, ClickHouse, BigQuery |
+| Runtime surfaces | CLI, CI, MCP, AWS/GCP/Azure reference runners, IAM departures workflow | more specialized runners and dialect-specific wrappers where demand justifies them |
+| Persistence edges | `sink-snowflake-jsonl`, `sink-clickhouse-jsonl`, `sink-s3-jsonl`, plus IAM departures dual-write to DynamoDB + S3 | additional customer-controlled destinations like Security Lake and BigQuery |
+| Query packs | `packs/lateral-movement/` and `packs/privilege-escalation-k8s/` | broader warehouse and dialect coverage |
 | Schema modes | native, canonical, OCSF, and bridge are all shipped; ingest and detect are fully dual-mode, while discovery uses native/bridge and evaluation, sinks, and remediation stay native-first | extend OCSF or bridge only where it materially improves interoperability without losing operational clarity |
 | Remediation | IAM departures with HITL and audit | broader remediation families |
 

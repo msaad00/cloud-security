@@ -1,7 +1,7 @@
 [project]
 name = "cloud-ai-security-skills"
-version = "0.4.0"
-description = "OCSF-native security skills for cloud and AI systems."
+version = "0.5.0"
+description = "Security skills for cloud and AI with repo-native and OCSF modes."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
