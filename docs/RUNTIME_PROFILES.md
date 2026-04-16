@@ -33,17 +33,27 @@ per-skill annotation model.
 
 ## Measurement Method
 
-These measurements were taken on a local developer workstation on 2026-04-15 by
+These measurements were taken on a local developer workstation on 2026-04-16 by
 running the real shipped Python entrypoints against bundled fixtures repeated to
-represent larger batches.
+represent larger batches. They are reproducible via
+[`scripts/benchmark_runtime_profiles.py`](../scripts/benchmark_runtime_profiles.py),
+and the current checked-in snapshot lives at
+[`docs/benchmarks/runtime-profiles-2026-04-16.json`](benchmarks/runtime-profiles-2026-04-16.json).
 
 Method:
 
 - 3 runs per case
 - wall-clock duration from process start to exit
-- child-process CPU time from `resource.getrusage(...)`
-- peak resident set size from a fresh benchmark parent process
+- child-process CPU time from `resource.getrusage(RUSAGE_CHILDREN)` in a fresh helper process per run
+- peak resident set size from that same fresh helper process
 - stdout discarded to avoid terminal rendering cost
+
+Reproduce the current snapshot:
+
+```bash
+python scripts/benchmark_runtime_profiles.py \
+  --output docs/benchmarks/runtime-profiles-2026-04-16.json
+```
 
 Caveats:
 
@@ -64,8 +74,8 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical | 1,000 | 61.46 ms | 44.07 ms | 11.58 ms | 19.9 MiB | ~16.3k records/s |
-| 10x | 10,000 | 235.34 ms | 190.87 ms | 27.75 ms | 39.1 MiB | ~42.5k records/s |
+| typical | 1,000 | 44.77 ms | 33.40 ms | 8.05 ms | 19.8 MiB | ~22.3k records/s |
+| 10x | 10,000 | 185.96 ms | 144.34 ms | 12.74 ms | 38.7 MiB | ~53.8k records/s |
 
 Operator guidance:
 
@@ -82,14 +92,15 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical | 1,000 | 59.75 ms | 44.01 ms | 12.43 ms | 25.8 MiB | ~16.7k records/s |
-| 10x | 10,000 | 210.15 ms | 171.58 ms | 28.13 ms | 86.8 MiB | ~47.6k records/s |
+| typical | 1,000 | 69.78 ms | 40.31 ms | 10.27 ms | 25.5 MiB | ~14.3k records/s |
+| 10x | 10,000 | 185.00 ms | 122.36 ms | 17.46 ms | 84.9 MiB | ~54.1k records/s |
 
 Operator guidance:
 
 - local CLI or CI: 256 MiB is the safer default
 - serverless wrappers: start at 512 MiB if the same worker also handles queue, JSON, or retry overhead
 - shard large windows by time or source when the surrounding runtime has hard timeout limits
+- prefer the query-pack / warehouse-native path for lake-scale windows instead of assuming local Python correlation should absorb unbounded mixed-event batches
 
 ### sink-snowflake-jsonl
 
@@ -101,8 +112,8 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical dry-run | 500 | 61.16 ms | 46.44 ms | 10.25 ms | 18.6 MiB | ~8.2k records/s |
-| 10x dry-run | 5,000 | 229.87 ms | 185.87 ms | 19.64 ms | 36.3 MiB | ~21.8k records/s |
+| typical dry-run | 500 | 55.78 ms | 36.95 ms | 8.31 ms | 18.5 MiB | ~9.0k records/s |
+| 10x dry-run | 5,000 | 169.92 ms | 137.10 ms | 12.98 ms | 34.8 MiB | ~29.4k records/s |
 
 Important boundary:
 

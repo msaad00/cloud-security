@@ -266,6 +266,11 @@ class TestPositiveCases:
         findings = list(detect(events))
         assert len(findings) == 1
 
+    def test_duplicate_heavy_batch_preserves_expected_findings(self):
+        events = _load(INPUT) * 200
+        findings = list(detect(events))
+        assert findings == _load(EXPECTED)
+
     def test_same_actor_name_different_sessions_produce_distinct_findings(self):
         events = [
             _anchor_event(time_ms=1000, actor="alice", session_uid="session-a"),
