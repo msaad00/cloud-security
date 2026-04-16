@@ -73,6 +73,7 @@ The format is loosely based on Keep a Changelog.
 - Added a runnable README hello-world path, clarified that the `DATA_FLOW.md` rollout list is now driven by README + `SKILL.md` frontmatter, and documented bounded-batch guidance for `detect-lateral-movement`.
 - Tightened the public contract so the repo is positioned as OCSF-default for streams and native-first for operational artifacts, with explicit lossy-mapping and schema-versioning policy instead of vague "optional OCSF" wording.
 - Added `concurrency_safety` to every shipped skill plus validator enforcement for canonical frontmatter field order, making parallel-execution expectations explicit instead of tribal knowledge.
+- Clarified the install and trust model in the README so the repo is presented as a tagged source release with pinned dependency groups and signed SBOMs, not as a generic opaque package install.
 
 - `docs/COVERAGE_MODEL.md`, `docs/framework-coverage.json`, and `docs/ROADMAP.md` to make framework, provider, asset, and execution coverage measurable and auditable.
 - `scripts/validate_framework_coverage.py` so CI can reject undocumented or drifting coverage claims.

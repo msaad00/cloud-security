@@ -29,6 +29,29 @@ Security skills for cloud and AI systems. Use source-specific ingest, discovery,
 
 For the full source, asset, framework, and runtime crosswalk, see [docs/USE_CASES.md](docs/USE_CASES.md).
 
+## Install And Trust Model
+
+This repo is not primarily distributed as a single PyPI-installed application.
+
+The intended trust and execution model is:
+
+- clone the repo at a tagged release
+- verify the signed tag and release-attached signed SBOM set
+- install only the dependency groups you actually need from `pyproject.toml`
+- run the skill bundles directly, through MCP, in CI, or behind the shipped runners
+
+In other words:
+
+- `uv.lock` is the full dependency ceiling
+- real operator installs are narrower and runtime-specific
+- the trust boundary is the repo release itself, not an opaque package wrapper
+
+See:
+
+- [docs/SUPPLY_CHAIN.md](docs/SUPPLY_CHAIN.md)
+- [docs/CREDENTIAL_PROVENANCE.md](docs/CREDENTIAL_PROVENANCE.md)
+- [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
+
 ## Quick Run
 
 Each shipped skill is a bundle:
