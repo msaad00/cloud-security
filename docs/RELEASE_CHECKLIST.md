@@ -3,6 +3,13 @@
 This repo releases as one trust boundary. We do not version individual skills
 independently.
 
+## Cadence And Support
+
+- Releases are demand-driven, not calendar-driven.
+- During `0.x`, `main` and the most recent tagged release are the supported lines.
+- Older `0.x` tags are not long-term-support releases unless a release note says otherwise.
+- We do not publish a separate LTS line yet; if that changes, the release notes for that tag will state it explicitly.
+
 ## Semver Rules
 
 - `PATCH` (`0.4.1`)

@@ -18,6 +18,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native, ocsf
+concurrency_safety: stateless
 ---
 
 # ingest-mcp-proxy-ocsf

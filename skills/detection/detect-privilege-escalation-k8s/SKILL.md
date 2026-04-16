@@ -17,6 +17,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: canonical, native, ocsf
 output_formats: native, ocsf
+concurrency_safety: requires_consistent_sharding
 ---
 
 # detect-privilege-escalation-k8s

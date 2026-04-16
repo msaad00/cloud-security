@@ -14,6 +14,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+, google-cloud-iam, google-cloud-storage, google-cloud-compute.
   Service account needs roles/viewer + roles/iam.securityReviewer.

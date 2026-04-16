@@ -20,6 +20,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native, bridge
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+. Cloud discovery needs respective SDKs (boto3 for AWS,
   google-cloud-* for GCP, azure-* for Azure). Static config mode needs no SDKs.

@@ -85,6 +85,7 @@ class TestSkillValidationCommon:
         assert ingest.approval_model == "none"
         assert ingest.execution_modes == ("jit", "ci", "mcp", "persistent")
         assert ingest.side_effects == ("none",)
+        assert ingest.concurrency_safety == "stateless"
         assert ingest.caller_roles == ()
         assert ingest.approver_roles == ()
         assert ingest.min_approvers is None
@@ -211,6 +212,7 @@ class TestValidationScripts:
         assert remediation.approval_model == "human_required"
         assert remediation.execution_modes == ("jit", "persistent")
         assert "writes-identity" in remediation.side_effects
+        assert remediation.concurrency_safety == "operator_coordinated"
         assert remediation.caller_roles == ("security_engineer", "incident_responder")
         assert remediation.approver_roles == ("security_lead", "cis_officer")
         assert remediation.min_approvers == 1
@@ -221,6 +223,7 @@ class TestValidationScripts:
         assert sink.approval_model == "human_required"
         assert sink.execution_modes == ("jit", "mcp", "persistent")
         assert sink.side_effects == ("writes-database",)
+        assert sink.concurrency_safety == "operator_coordinated"
         assert sink.caller_roles == ("security_engineer", "platform_engineer")
         assert sink.approver_roles == ("security_lead", "data_platform_owner")
         assert sink.min_approvers == 1
@@ -231,6 +234,7 @@ class TestValidationScripts:
         assert sink.approval_model == "human_required"
         assert sink.execution_modes == ("jit", "mcp", "persistent")
         assert sink.side_effects == ("writes-database",)
+        assert sink.concurrency_safety == "operator_coordinated"
         assert sink.caller_roles == ("security_engineer", "platform_engineer")
         assert sink.approver_roles == ("security_lead", "data_platform_owner")
         assert sink.min_approvers == 1
@@ -241,6 +245,7 @@ class TestValidationScripts:
         assert sink.approval_model == "human_required"
         assert sink.execution_modes == ("jit", "mcp", "persistent")
         assert sink.side_effects == ("writes-storage",)
+        assert sink.concurrency_safety == "operator_coordinated"
         assert sink.caller_roles == ("security_engineer", "platform_engineer")
         assert sink.approver_roles == ("security_lead", "data_platform_owner")
         assert sink.min_approvers == 1

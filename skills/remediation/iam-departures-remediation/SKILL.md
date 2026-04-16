@@ -20,6 +20,7 @@ execution_modes: jit, persistent
 side_effects: writes-identity, writes-storage, writes-database, writes-audit
 input_formats: raw, canonical
 output_formats: native
+concurrency_safety: operator_coordinated
 network_egress: api.workday.com, *.snowflakecomputing.com, *.databricks.com, *.clickhouse.cloud
 caller_roles: security_engineer, incident_responder
 approver_roles: security_lead, cis_officer

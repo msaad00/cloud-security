@@ -15,6 +15,7 @@ execution_modes: jit, mcp, persistent
 side_effects: writes-storage
 input_formats: raw, native, ocsf
 output_formats: native
+concurrency_safety: operator_coordinated
 network_egress: "*.amazonaws.com"
 caller_roles: security_engineer, platform_engineer
 approver_roles: security_lead, data_platform_owner

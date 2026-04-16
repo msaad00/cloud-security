@@ -18,6 +18,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: canonical, native, ocsf
 output_formats: native, ocsf
+concurrency_safety: requires_consistent_sharding
 metadata:
   homepage: https://github.com/msaad00/cloud-ai-security-skills
   source: https://github.com/msaad00/cloud-ai-security-skills/tree/main/skills/detection/detect-okta-mfa-fatigue

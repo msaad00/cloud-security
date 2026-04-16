@@ -15,6 +15,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+, boto3, and AWS credentials with SecurityAudit managed policy
   (read-only). No write permissions needed — assessment only.

@@ -17,6 +17,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native, ocsf
+concurrency_safety: stateless
 compatibility: >-
   Requires Python 3.11+. No Graph SDK required when directoryAudit payloads are
   already exported. Read-only — validates raw Entra audit shape and emits OCSF

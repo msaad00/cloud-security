@@ -15,6 +15,7 @@ execution_modes: jit, mcp, persistent
 side_effects: writes-database
 input_formats: raw, native, ocsf
 output_formats: native
+concurrency_safety: operator_coordinated
 network_egress: "*.clickhouse.cloud"
 caller_roles: security_engineer, platform_engineer
 approver_roles: security_lead, data_platform_owner

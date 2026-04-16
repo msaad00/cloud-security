@@ -14,6 +14,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+, azure-identity, azure-mgmt-storage, azure-mgmt-network.
   Service principal needs Reader role. No write permissions — assessment only.

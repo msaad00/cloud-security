@@ -20,6 +20,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+. No cloud SDKs needed — works with local config files.
   Optional: PyYAML for YAML config parsing. Read-only — no write permissions,

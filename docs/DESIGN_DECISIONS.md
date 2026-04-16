@@ -12,8 +12,8 @@ when you want the schema-mode decision tree.
 
 Current repo surface on `main`:
 
-- `43` shipped skills across ingestion, discovery, detection, evaluation, view,
-  and remediation
+- shipped skills across ingestion, discovery, detection, evaluation, view, and
+  remediation
 - `3` read-only source adapters:
   - `source-snowflake-query`
   - `source-databricks-query`
