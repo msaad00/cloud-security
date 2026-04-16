@@ -15,6 +15,10 @@ The format is loosely based on Keep a Changelog.
 
 - [`scripts/benchmark_runtime_profiles.py`](scripts/benchmark_runtime_profiles.py) plus a checked-in runtime snapshot at [`docs/benchmarks/runtime-profiles-2026-04-16.json`](docs/benchmarks/runtime-profiles-2026-04-16.json) so the representative sizing tables in [`docs/RUNTIME_PROFILES.md`](docs/RUNTIME_PROFILES.md) can be regenerated from code instead of drifting as prose.
 
+### Changed
+
+- optimized `detect-lateral-movement` to index candidate flows instead of repeatedly rescanning the full flow set per anchor, and added a duplicate-heavy regression test so the faster path preserves the same findings while keeping the benchmarked 10x case in line with the documented runtime envelope.
+
 ### Planned for v0.5.1
 
 - add parser-hardening follow-up tests on the highest-volume ingestion paths so malformed mixed-shape input keeps failing closed without breaking valid records in the same batch

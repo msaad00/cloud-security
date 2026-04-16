@@ -74,8 +74,8 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical | 1,000 | 47.32 ms | 33.56 ms | 7.60 ms | 19.6 MiB | ~21.1k records/s |
-| 10x | 10,000 | 188.88 ms | 148.26 ms | 15.17 ms | 39.2 MiB | ~52.9k records/s |
+| typical | 1,000 | 44.77 ms | 33.40 ms | 8.05 ms | 19.8 MiB | ~22.3k records/s |
+| 10x | 10,000 | 185.96 ms | 144.34 ms | 12.74 ms | 38.7 MiB | ~53.8k records/s |
 
 Operator guidance:
 
@@ -92,15 +92,15 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical | 1,000 | 185.59 ms | 159.75 ms | 9.94 ms | 24.6 MiB | ~5.4k records/s |
-| 10x | 10,000 | 18,069.31 ms | 16,319.84 ms | 194.79 ms | 84.7 MiB | ~553.4 records/s |
+| typical | 1,000 | 69.78 ms | 40.31 ms | 10.27 ms | 25.5 MiB | ~14.3k records/s |
+| 10x | 10,000 | 185.00 ms | 122.36 ms | 17.46 ms | 84.9 MiB | ~54.1k records/s |
 
 Operator guidance:
 
 - local CLI or CI: 256 MiB is the safer default
 - serverless wrappers: start at 512 MiB if the same worker also handles queue, JSON, or retry overhead
 - shard large windows by time or source when the surrounding runtime has hard timeout limits
-- prefer the query-pack / warehouse-native path for lake-scale windows instead of assuming sub-second local correlation at 10,000 mixed rows
+- prefer the query-pack / warehouse-native path for lake-scale windows instead of assuming local Python correlation should absorb unbounded mixed-event batches
 
 ### sink-snowflake-jsonl
 
@@ -112,8 +112,8 @@ Fixture shape:
 
 | Load level | Input records | Avg wall | Avg CPU user | Avg CPU sys | Peak RSS | Approx throughput |
 |---|---:|---:|---:|---:|---:|---:|
-| typical dry-run | 500 | 40.45 ms | 32.54 ms | 5.78 ms | 18.2 MiB | ~12.4k records/s |
-| 10x dry-run | 5,000 | 132.96 ms | 122.67 ms | 8.49 ms | 35.6 MiB | ~37.6k records/s |
+| typical dry-run | 500 | 55.78 ms | 36.95 ms | 8.31 ms | 18.5 MiB | ~9.0k records/s |
+| 10x dry-run | 5,000 | 169.92 ms | 137.10 ms | 12.98 ms | 34.8 MiB | ~29.4k records/s |
 
 Important boundary:
 

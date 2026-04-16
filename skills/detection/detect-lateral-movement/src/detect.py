@@ -18,6 +18,7 @@ import hashlib
 import ipaddress
 import json
 import sys
+from bisect import bisect_left
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -523,6 +524,73 @@ def _render_ocsf_finding(native_finding: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _is_candidate_flow(event: dict[str, Any]) -> bool:
+    if event["event_kind"] != "network_activity" or int(event["activity_id"]) != NET_ACTIVITY_ACCEPT:
+        return False
+    if _safe_int(event["traffic_bytes"]) < MIN_BYTES:
+        return False
+    return is_rfc1918(str(event["dst_ip"]))
+
+
+def _index_candidate_flows(flows: Iterable[dict[str, Any]]) -> dict[str, dict[str, dict[tuple[str, int | None], dict[str, Any]]]]:
+    indexed: dict[str, dict[str, dict[tuple[str, int | None], dict[str, Any]]]] = {}
+    for flow in flows:
+        provider = str(flow["provider"])
+        account = str(flow["account_uid"])
+        dst_key = (str(flow["dst_ip"]), flow["dst_port"])
+        provider_bucket = indexed.setdefault(provider, {})
+        account_bucket = provider_bucket.setdefault(account, {})
+        record = account_bucket.setdefault(dst_key, {"times": [], "flows": []})
+        record["times"].append(int(flow["time_ms"]))
+        record["flows"].append(flow)
+    return indexed
+
+
+def _iter_matching_flow_buckets(
+    indexed_flows: dict[str, dict[str, dict[tuple[str, int | None], dict[str, Any]]]],
+    anchor_provider: str,
+    anchor_account: str,
+) -> Iterable[dict[tuple[str, int | None], dict[str, Any]]]:
+    if anchor_provider:
+        provider_bucket = indexed_flows.get(anchor_provider, {})
+        if anchor_account:
+            exact = provider_bucket.get(anchor_account)
+            if exact:
+                yield exact
+            shared = provider_bucket.get("")
+            if shared and shared is not exact:
+                yield shared
+            return
+        yield from provider_bucket.values()
+        return
+
+    for provider_bucket in indexed_flows.values():
+        if anchor_account:
+            exact = provider_bucket.get(anchor_account)
+            if exact:
+                yield exact
+            shared = provider_bucket.get("")
+            if shared and shared is not exact:
+                yield shared
+            continue
+        yield from provider_bucket.values()
+
+
+def _find_earliest_flow_in_window(
+    bucket: dict[str, Any],
+    anchor_time: int,
+    window_end: int,
+) -> dict[str, Any] | None:
+    times: list[int] = bucket["times"]
+    flows: list[dict[str, Any]] = bucket["flows"]
+    index = bisect_left(times, anchor_time)
+    if index >= len(times):
+        return None
+    if times[index] > window_end:
+        return None
+    return flows[index]
+
+
 def detect(events: Iterable[dict[str, Any]], output_format: str = "ocsf") -> Iterable[dict[str, Any]]:
     """Walk a merged stream. Yield one finding per (session, dst) pair.
 
@@ -530,18 +598,16 @@ def detect(events: Iterable[dict[str, Any]], output_format: str = "ocsf") -> Ite
     order (then by dst IP and port as tiebreaker).
     """
     events_list = [normalized for event in events if (normalized := _normalize_event(event)) is not None]
-    # Partition the stream
     identity_anchors: list[dict[str, Any]] = []
-    flows: list[dict[str, Any]] = []
+    candidate_flows: list[dict[str, Any]] = []
     for ev in events_list:
         if is_identity_pivot_anchor(ev):
             identity_anchors.append(ev)
-        elif ev["event_kind"] == "network_activity" and int(ev["activity_id"]) == NET_ACTIVITY_ACCEPT:
-            flows.append(ev)
+        elif _is_candidate_flow(ev):
+            candidate_flows.append(ev)
 
-    # Sort for deterministic iteration
     identity_anchors.sort(key=lambda event: int(event["time_ms"]))
-    flows.sort(key=lambda event: int(event["time_ms"]))
+    indexed_flows = _index_candidate_flows(candidate_flows)
 
     seen: set[str] = set()
     findings: list[dict[str, Any]] = []
@@ -551,31 +617,19 @@ def detect(events: Iterable[dict[str, Any]], output_format: str = "ocsf") -> Ite
         window_end = anchor_time + CORRELATION_WINDOW_MS
         anchor_provider = str(anchor["provider"])
         anchor_account = str(anchor["account_uid"])
+        session = str(anchor["session_uid"])
 
-        for flow in flows:
-            ft = int(flow["time_ms"])
-            if ft < anchor_time or ft > window_end:
-                continue
-            if anchor_provider and str(flow["provider"]) != anchor_provider:
-                continue
-            flow_account = str(flow["account_uid"])
-            if anchor_account and flow_account and flow_account != anchor_account:
-                continue
-            if _safe_int(flow["traffic_bytes"]) < MIN_BYTES:
-                continue
-            dst = str(flow["dst_ip"])
-            if not is_rfc1918(dst):
-                continue
-
-            session = str(anchor["session_uid"])
-            dst_port = flow["dst_port"]
-            dedup_key = f"{anchor_provider}|{session}|{dst}|{dst_port}"
-            if dedup_key in seen:
-                continue
-            seen.add(dedup_key)
-
-            native_finding = _build_native_finding(anchor_event=anchor, flow_event=flow)
-            findings.append(_render_ocsf_finding(native_finding) if output_format == "ocsf" else native_finding)
+        for account_bucket in _iter_matching_flow_buckets(indexed_flows, anchor_provider, anchor_account):
+            for (dst, dst_port), flow_bucket in account_bucket.items():
+                dedup_key = f"{anchor_provider}|{session}|{dst}|{dst_port}"
+                if dedup_key in seen:
+                    continue
+                flow = _find_earliest_flow_in_window(flow_bucket, anchor_time, window_end)
+                if flow is None:
+                    continue
+                seen.add(dedup_key)
+                native_finding = _build_native_finding(anchor_event=anchor, flow_event=flow)
+                findings.append(_render_ocsf_finding(native_finding) if output_format == "ocsf" else native_finding)
 
     # Final deterministic ordering by anchor time, dst ip, dst port
     findings.sort(
