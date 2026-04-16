@@ -11,10 +11,13 @@ The format is loosely based on Keep a Changelog.
 
 ## Unreleased
 
+## 0.5.0 - 2026-04-15
+
 ### Added
 
 - [`docs/NATIVE_VS_OCSF.md`](docs/NATIVE_VS_OCSF.md) and [`docs/STATE_AND_TIMELINE_MODEL.md`](docs/STATE_AND_TIMELINE_MODEL.md) to make `native`, `canonical`, `ocsf`, and `bridge` modes explicit and to pin historical-state, tombstone, and timeline expectations across just-in-time and persistent runs.
 - [`docs/DEBUGGING.md`](docs/DEBUGGING.md) and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for operator-facing format, CI, and runtime troubleshooting.
+- [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md), [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md), [`docs/DATA_HANDLING.md`](docs/DATA_HANDLING.md), [`docs/COMPLIANCE_MAPPINGS.md`](docs/COMPLIANCE_MAPPINGS.md), [`docs/SCHEMA_VERSIONING.md`](docs/SCHEMA_VERSIONING.md), [`docs/LOSSY_MAPPINGS.md`](docs/LOSSY_MAPPINGS.md), [`docs/ERROR_CODES.md`](docs/ERROR_CODES.md), [`docs/STDERR_TELEMETRY_CONTRACT.md`](docs/STDERR_TELEMETRY_CONTRACT.md), [`docs/MCP_AUDIT_CONTRACT.md`](docs/MCP_AUDIT_CONTRACT.md), and [`docs/RUNTIME_PROFILES.md`](docs/RUNTIME_PROFILES.md) to make the trust, schema, operator, procurement, and sizing story auditable from docs alone.
 - `ingest-okta-system-log-ocsf` as the first external identity-vendor ingestion skill, mapping verified Okta System Log session, user lifecycle, and membership events into OCSF Authentication (3002), Account Change (3001), and User Access Management (3005).
 - `detect-okta-mfa-fatigue` as the first Okta-native detection skill, emitting OCSF Detection Finding (2004) for repeated Okta Verify push challenge and denial bursts aligned to MITRE ATT&CK T1621.
 - `ingest-entra-directory-audit-ocsf` as the Microsoft Entra / Graph identity-audit ingestion skill, mapping verified `directoryAudit` application, service-principal, app-role-assignment, and federated-credential events into OCSF API Activity (6003).
@@ -30,7 +33,7 @@ The format is loosely based on Keep a Changelog.
 - extended the same opt-in structured `stderr` telemetry pilot to `ingest-okta-system-log-ocsf` and `detect-okta-mfa-fatigue`, covering the Okta identity ingest/detect path without changing stdout data contracts.
 - extended the same opt-in structured `stderr` telemetry pilot to `ingest-google-workspace-login-ocsf` and `detect-google-workspace-suspicious-login`, covering the Google Workspace identity ingest/detect path without changing stdout data contracts.
 - tightened the README and skill catalog entry path around use cases, skill selection, plug-in surfaces, and clearer layer guidance, plus added `docs/USE_CASES.md` as the practical crosswalk for sources, assets, frameworks, and starting skills.
-- clarified in the README and use-case guide that repo-owned remediation audit lands in DynamoDB + S3 today, while customer-controlled sinks such as Snowflake / Snowpipe belong to the planned sink / runner layer rather than the currently shipped generic path.
+- clarified in the README and use-case guide that repo-owned remediation audit lands in DynamoDB + S3 today, while generic sink skills now ship for Snowflake, ClickHouse, and S3; additional destinations such as Security Lake and BigQuery remain supported patterns rather than built-ins.
 - a new start-here visual and updated IAM departures data-flow visual so operators can see sources, layer choice, outputs, runtime surfaces, and the shipped-vs-optional sink boundary without reading the full architecture docs first.
 - a runtime-surfaces visual showing that CLI, CI, MCP, and persistent wrappers all call the same `SKILL.md + src/ + tests/` contract instead of creating parallel implementations.
 - expanded the vendor icon asset set with Okta plus Microsoft Entra and Google Workspace stand-ins so the visual system can represent shipped identity sources alongside cloud and data-platform vendors.
@@ -38,10 +41,15 @@ The format is loosely based on Keep a Changelog.
 - added a repo-aware `mypy` runner and CI lane that type-checks each skill `src/` directory in isolation plus `mcp-server/src/` and `scripts/`, so the repeated `ingest.py` / `detect.py` layout no longer blocks meaningful type enforcement.
 - `scripts/validate_test_coverage.py` plus a dedicated CI coverage lane that now enforces real repo-level thresholds: `overall >= 70%`, `detection >= 80%`, and `evaluation >= 60%`.
 - `runners/aws-s3-sqs-detect`, a repo-owned AWS reference runner template for `S3 -> ingest Lambda -> SQS -> detect Lambda -> DynamoDB dedupe -> SNS`, so persistent execution is no longer docs-only outside the IAM departures workflow.
+- `runners/gcp-gcs-pubsub-detect` and `runners/azure-blob-eventgrid-detect` as the matching GCP and Azure reference runners, so the persistent execution story now has a shipped template on all three major clouds.
+- `source-snowflake-query`, `source-databricks-query`, and `source-s3-select` as read-only source adapters for warehouse and object-store based pipelines.
+- `sink-snowflake-jsonl`, `sink-clickhouse-jsonl`, and `sink-s3-jsonl` as write-capable persistence edges with dry-run-first contracts, explicit approval metadata, and auditable native result summaries.
+- `packs/lateral-movement/` and `packs/privilege-escalation-k8s/` as the first shipped query-pack families proving warehouse-native detection can stay aligned with the Python skill intent.
 - `docs/RELEASE_CHECKLIST.md` plus explicit repo-level semver bump rules, and aligned local pre-commit Bandit scope with the same `skills/`, `mcp-server/`, and `scripts/` surface enforced in CI.
 - `docs/CREDENTIAL_PROVENANCE.md` plus README / security-doc updates to make the repo's secret-minimizing credential posture explicit, document the remaining password/client-secret compatibility paths, and explain why direct Workday `httpx` access remains a narrow documented exception instead of a hidden supply-chain surprise.
 - `docs/CANONICAL_SCHEMA.md` and `docs/DATA_FLOW.md` to pin the repo-owned canonical model and the raw → canonical → native / ocsf / bridge flow.
 - `docs/SUPPLY_CHAIN.md` plus a new CI CycloneDX SBOM artifact, making the dependency-provenance, lockfile-ceiling, and runtime-surface story explicit for operators and auditors.
+- a release workflow that attaches the signed CycloneDX SBOM artifact set directly to GitHub Releases instead of leaving it only as a CI artifact.
 
 ### Changed
 
@@ -60,8 +68,12 @@ The format is loosely based on Keep a Changelog.
 - Extended the native/OCSF pilot to `ingest-google-workspace-login-ocsf` and `detect-google-workspace-suspicious-login`, so the Workspace login ingestion and suspicious-login detection path now supports native or OCSF input/output without changing the underlying detection semantics.
 - Extended the native/OCSF pilot to `ingest-entra-directory-audit-ocsf` and `detect-entra-credential-addition`, so Entra directory-audit ingestion and credential-addition detection now support native or OCSF input/output without changing the underlying detection semantics.
 - Extended the native/OCSF pilot to `ingest-okta-system-log-ocsf` and `detect-okta-mfa-fatigue`, so the Okta System Log ingestion and MFA-fatigue detection path now supports native or OCSF input/output without changing the underlying detection semantics.
+- Finished the native/OCSF rollout across the shipped ingest and detect layers, so event and finding pipelines are now fully dual-mode wherever the repo intends interoperability parity.
 - Made the README honest about current schema-mode rollout, required `input_formats` / `output_formats` for every shipped skill, and documented the native output fields on the currently dual-mode skills.
 - Added a runnable README hello-world path, clarified that the `DATA_FLOW.md` rollout list is now driven by README + `SKILL.md` frontmatter, and documented bounded-batch guidance for `detect-lateral-movement`.
+- Tightened the public contract so the repo is positioned as OCSF-default for streams and native-first for operational artifacts, with explicit lossy-mapping and schema-versioning policy instead of vague "optional OCSF" wording.
+- Added `concurrency_safety` to every shipped skill plus validator enforcement for canonical frontmatter field order, making parallel-execution expectations explicit instead of tribal knowledge.
+- Clarified the install and trust model in the README so the repo is presented as a tagged source release with pinned dependency groups and signed SBOMs, not as a generic opaque package install.
 
 - `docs/COVERAGE_MODEL.md`, `docs/framework-coverage.json`, and `docs/ROADMAP.md` to make framework, provider, asset, and execution coverage measurable and auditable.
 - `scripts/validate_framework_coverage.py` so CI can reject undocumented or drifting coverage claims.
