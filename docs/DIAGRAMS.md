@@ -13,6 +13,7 @@ Keep markdown diagrams lightweight and reviewable, then pair them with polished 
 - [Repository architecture](images/repo-architecture.svg)
 - [IAM departures data flow](images/iam-departures-data-flow.svg)
 - [Detection engineering pipeline](images/detection-pipeline.svg)
+- [End-to-end skill flows](images/end-to-end-skill-flows.svg)
 
 ## Diagram descriptions
 
@@ -33,6 +34,8 @@ review, and PR discussions where opening the SVG is inconvenient.
   - Shows the remediation workflow data path from source manifests through planning, approval, execution, and audit artifacts.
 - `detection-pipeline.svg`
   - Shows the standard event path from raw input through normalization, detection, optional export, and downstream persistence.
+- `end-to-end-skill-flows.svg`
+  - Shows three concrete shipped compositions: raw logs through ingest/detect/export, warehouse rows through source/detect/sink, and live discovery/evaluation with native outputs and optional guarded action paths.
 
 ## Rules
 
