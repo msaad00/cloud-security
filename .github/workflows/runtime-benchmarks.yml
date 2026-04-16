@@ -1,0 +1,35 @@
+name: Runtime Benchmarks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 8 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark-regression:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Generate fresh benchmark snapshot
+        run: |
+          python scripts/benchmark_runtime_profiles.py \
+            --output runtime-profiles-current.json
+
+      - name: Check scaling against baseline
+        run: |
+          python scripts/check_runtime_profile_regressions.py \
+            --baseline docs/benchmarks/runtime-profiles-2026-04-16.json \
+            --candidate runtime-profiles-current.json
+
+      - name: Upload benchmark snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-profiles-current
+          path: runtime-profiles-current.json
