@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import cycle, islice
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTHON = sys.executable
@@ -158,7 +158,10 @@ def _run_helper(input_path: Path, input_mode: InputMode, command: Sequence[str])
     completed = subprocess.run(helper_command, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
         raise RuntimeError(completed.stderr.strip() or completed.stdout.strip() or "benchmark helper failed")
-    return json.loads(completed.stdout)
+    raw_result = json.loads(completed.stdout)
+    if not isinstance(raw_result, dict):
+        raise RuntimeError("benchmark helper did not return a JSON object")
+    return cast(dict[str, float], raw_result)
 
 
 def _average(values: list[float]) -> float:
