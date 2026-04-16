@@ -15,6 +15,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: raw
+concurrency_safety: stateless
 network_egress: "*.snowflakecomputing.com"
 ---
 

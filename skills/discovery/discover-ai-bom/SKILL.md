@@ -17,6 +17,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw, canonical
 output_formats: native
+concurrency_safety: operator_coordinated
 compatibility: >-
   Requires Python 3.11+. No cloud SDKs required when inventory snapshots are
   already exported. Read-only — validates and normalizes inventory into a

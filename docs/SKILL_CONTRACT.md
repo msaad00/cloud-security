@@ -39,6 +39,7 @@ Optional:
 
 Optional:
 - `network_egress`
+- `concurrency_safety`
 - `caller_roles`
 - `approver_roles`
 - `min_approvers`
@@ -86,6 +87,13 @@ Rules:
   - `ocsf`
   - `bridge`
 - every skill must declare the formats it supports today, even if only one mode is implemented
+- `concurrency_safety` must be one of:
+  - `stateless`
+  - `requires_consistent_sharding`
+  - `operator_coordinated`
+- `stateless` means the skill has no repo-local mutable state and can be parallelized safely on independent inputs
+- `requires_consistent_sharding` means the skill is safe to parallelize only when batching or sharding preserves the logical correlation window
+- `operator_coordinated` means concurrency is possible, but the caller should coordinate around remote quotas, writes, approvals, or append semantics
 - `network_egress`, when present, must be a comma-separated list of hostnames or wildcard hostnames such as:
   - `api.workday.com`
   - `*.snowflakecomputing.com`
@@ -113,6 +121,9 @@ operator anti-patterns that must never be bypassed.
 
 `REFERENCES.md` must point to the official documentation, schema, API, benchmark, or framework the skill relies on.
 
+Blogs, opinion posts, and vendor marketing pages may be helpful during authoring,
+but they are not authoritative references for shipped skills.
+
 Examples:
 
 - AWS / Azure / GCP official docs
@@ -130,6 +141,26 @@ Examples:
 - defensive parsing on untrusted input
 - explicit human-in-the-loop and runtime-mode declaration in frontmatter so agents know when they must stop for approval
 - preserve caller, approver, and execution identity context when the surrounding runtime provides it
+
+## How Code Blocks Work
+
+Code blocks in `SKILL.md` are documentation examples, not executable code.
+
+The relationship is:
+
+- YAML frontmatter:
+  - machine-readable metadata for validators, MCP tool registration, and wrappers
+- `SKILL.md` body:
+  - human-and-agent-readable guidance such as usage examples, composition paths, prerequisites, and schema notes
+- `src/<entry>.py`:
+  - the actual executable implementation
+
+This means:
+
+- shell examples show how to invoke a skill directly
+- composition examples show how skills chain together
+- SQL or infrastructure examples show prerequisites the skill expects
+- wrappers and MCP ignore `SKILL.md` code blocks at execution time and call the real Python entrypoint instead
 
 ## Required validation and error handling
 
@@ -164,6 +195,7 @@ CI currently validates:
 - `Use when` and `Do NOT use` are present
 - `approval_model`, `execution_modes`, and `side_effects` are present and valid
 - `input_formats` and `output_formats` are present and valid
+- `concurrency_safety` is present, valid, and in canonical frontmatter order
 - read-only skills do not use subprocess/shell execution
 - write-capable skills document and test dry-run behavior
 - write-capable skills explicitly require human approval

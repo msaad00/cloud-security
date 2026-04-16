@@ -19,6 +19,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: native, ocsf
+concurrency_safety: stateless
 compatibility: >-
   Requires Python 3.11+. No Okta SDK required when System Log payloads are
   already exported. Read-only — validates raw Okta event shape and emits OCSF

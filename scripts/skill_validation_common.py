@@ -32,7 +32,26 @@ SIDE_EFFECT_VALUES = {
 }
 INPUT_FORMAT_VALUES = {"raw", "canonical", "native", "ocsf"}
 OUTPUT_FORMAT_VALUES = {"raw", "native", "ocsf", "bridge"}
+CONCURRENCY_SAFETY_VALUES = {"stateless", "requires_consistent_sharding", "operator_coordinated"}
 NETWORK_EGRESS_RE = re.compile(r"^(?:\*\.)?(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
+FRONTMATTER_KEY_ORDER = (
+    "name",
+    "description",
+    "license",
+    "capability",
+    "approval_model",
+    "execution_modes",
+    "side_effects",
+    "input_formats",
+    "output_formats",
+    "concurrency_safety",
+    "network_egress",
+    "caller_roles",
+    "approver_roles",
+    "min_approvers",
+    "compatibility",
+    "metadata",
+)
 
 ENTRYPOINT_CANDIDATES = (
     "src/ingest.py",
@@ -123,6 +142,10 @@ class SkillContract:
         return parse_modes(self.frontmatter.get("network_egress"))
 
     @property
+    def concurrency_safety(self) -> str:
+        return self.frontmatter.get("concurrency_safety", "")
+
+    @property
     def caller_roles(self) -> tuple[str, ...]:
         return parse_modes(self.frontmatter.get("caller_roles"))
 
@@ -208,6 +231,18 @@ def parse_modes(raw_value: str | None) -> tuple[str, ...]:
     if not raw_value:
         return ()
     return tuple(part.strip() for part in raw_value.split(",") if part.strip())
+
+
+def extract_frontmatter_keys(frontmatter: str) -> tuple[str, ...]:
+    keys: list[str] = []
+    for line in frontmatter.splitlines():
+        if not line.strip() or line.startswith(" "):
+            continue
+        if ":" not in line:
+            continue
+        key, _ = line.split(":", 1)
+        keys.append(key.strip())
+    return tuple(keys)
 
 
 def resolve_entrypoint(skill_dir: Path) -> Path | None:

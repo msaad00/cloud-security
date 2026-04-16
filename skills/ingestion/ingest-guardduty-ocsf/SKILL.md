@@ -20,6 +20,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: raw
 output_formats: ocsf, native
+concurrency_safety: stateless
 ---
 
 # ingest-guardduty-ocsf

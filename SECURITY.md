@@ -21,6 +21,8 @@ or directly by email if a contact is listed on the maintainer profile. Include:
 
 - initial acknowledgment target: 48 hours
 - remediation triage target: 7 business days
+- critical or high-severity fix/mitigation target: 30 calendar days when a safe patch path exists
+- medium-severity fix/mitigation target: 90 calendar days or the next planned minor release, whichever comes first
 - coordinated disclosure after a fix or mitigation is available
 
 ## Secure Usage Requirements

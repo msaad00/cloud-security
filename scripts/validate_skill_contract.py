@@ -4,7 +4,9 @@ import sys
 
 from skill_validation_common import (
     APPROVAL_MODE_VALUES,
+    CONCURRENCY_SAFETY_VALUES,
     EXECUTION_MODE_VALUES,
+    FRONTMATTER_KEY_ORDER,
     INPUT_FORMAT_VALUES,
     NAME_RE,
     NETWORK_EGRESS_RE,
@@ -12,6 +14,8 @@ from skill_validation_common import (
     ROOT,
     SIDE_EFFECT_VALUES,
     discover_skill_contracts,
+    extract_frontmatter,
+    extract_frontmatter_keys,
     iter_skill_like_dirs,
 )
 
@@ -33,6 +37,12 @@ def main() -> int:
             if not (skill.skill_dir / required).exists():
                 errors.append(f"{rel}: missing required path `{required}`")
 
+        frontmatter_keys = extract_frontmatter_keys(extract_frontmatter(skill.skill_dir / "SKILL.md"))
+        order_positions = {key: idx for idx, key in enumerate(FRONTMATTER_KEY_ORDER)}
+        present_positions = [order_positions[key] for key in frontmatter_keys if key in order_positions]
+        if present_positions != sorted(present_positions):
+            errors.append(f"{rel}: frontmatter fields must follow canonical order")
+
         for field in (
             "name",
             "description",
@@ -42,6 +52,7 @@ def main() -> int:
             "side_effects",
             "input_formats",
             "output_formats",
+            "concurrency_safety",
         ):
             if not skill.frontmatter.get(field):
                 errors.append(f"{rel}: frontmatter missing `{field}`")
@@ -92,6 +103,13 @@ def main() -> int:
                 errors.append(f"{rel}: invalid output_formats {unknown_output_formats}")
         elif output_formats:
             errors.append(f"{rel}: output_formats must not be empty")
+
+        concurrency_safety = skill.frontmatter.get("concurrency_safety", "").strip()
+        if concurrency_safety:
+            if concurrency_safety not in CONCURRENCY_SAFETY_VALUES:
+                errors.append(f"{rel}: invalid concurrency_safety `{concurrency_safety}`")
+        elif skill.frontmatter.get("concurrency_safety") is not None:
+            errors.append(f"{rel}: concurrency_safety must not be empty")
 
         network_egress = skill.frontmatter.get("network_egress")
         parsed_network_egress = tuple(

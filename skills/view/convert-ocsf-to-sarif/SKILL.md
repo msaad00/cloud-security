@@ -20,6 +20,7 @@ execution_modes: jit, ci, mcp, persistent
 side_effects: none
 input_formats: ocsf
 output_formats: native
+concurrency_safety: stateless
 ---
 
 # convert-ocsf-to-sarif
