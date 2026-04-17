@@ -294,9 +294,11 @@ jobs:
           tflint_version: v0.58.0
       - name: Install Azure Bicep CLI
         run: |
-          curl -sSL https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64 -o /usr/local/bin/bicep
-          chmod +x /usr/local/bin/bicep
-          bicep --version
+          mkdir -p "${HOME}/.local/bin"
+          curl -sSL https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64 -o "${HOME}/.local/bin/bicep"
+          chmod +x "${HOME}/.local/bin/bicep"
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+          "${HOME}/.local/bin/bicep" --version
       - name: Install shellcheck
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends shellcheck
       - name: cfn-lint — CloudFormation
