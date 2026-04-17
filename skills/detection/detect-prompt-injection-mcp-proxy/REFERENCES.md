@@ -9,8 +9,8 @@
 ## AI and MCP threat references
 
 - **OWASP GenAI Security Project — LLM01:2025 Prompt Injection** — https://genai.owasp.org/llmrisk/llm01-prompt-injection/
-- **OWASP Prompt Injection overview** — https://owasp.org/www-community/attacks/PromptInjection
-- **OWASP MCP Tool Poisoning** — https://owasp.org/www-community/attacks/MCP_Tool_Poisoning
+- **OWASP GenAI Security Project home** — https://genai.owasp.org/
+- **Model Context Protocol security architecture** — https://modelcontextprotocol.io/specification/architecture/security-and-trust-%26-safety
 - **MITRE ATLAS fact sheet** — https://atlas.mitre.org/pdf-files/MITRE_ATLAS_Fact_Sheet.pdf
 - **MITRE SAFE-AI report with AML.T0051 Prompt Injection coverage** — https://atlas.mitre.org/pdf-files/SAFEAI_Full_Report.pdf
 
