@@ -59,6 +59,12 @@
       ]
     },
     {
+      "Sid": "DenyDirectStepFunctionExecution_WILDCARD_OK",
+      "Effect": "Deny",
+      "Action": "states:StartExecution",
+      "Resource": "*"
+    },
+    {
       "Sid": "WriteAuditToDynamoDB",
       "Effect": "Allow",
       "Action": [
