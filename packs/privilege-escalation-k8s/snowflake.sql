@@ -1,4 +1,4 @@
--- privilege-escalation-k8s query pack for Snowflake
+-- Kubernetes privilege-escalation query pack (Snowflake dialect)
 --
 -- Required session variables:
 --   SET source_table = 'K8S_AUDIT_OCSF';

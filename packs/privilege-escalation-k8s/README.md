@@ -1,16 +1,20 @@
-# privilege-escalation-k8s query pack
+# Kubernetes privilege-escalation query pack
 
-Warehouse-native Snowflake implementation of the same detection intent as [`skills/detection/detect-privilege-escalation-k8s`](../../skills/detection/detect-privilege-escalation-k8s/SKILL.md).
+Warehouse-native SQL implementations of the same Kubernetes privilege-escalation
+detection intent as
+[`skills/detection/detect-privilege-escalation-k8s`](../../skills/detection/detect-privilege-escalation-k8s/SKILL.md).
+The detection target is Kubernetes audit activity; Snowflake and Databricks
+are just the warehouse dialects the pack can run on.
 
 Use this pack when:
 - your lake already stores OCSF-shaped Kubernetes API Activity (`6003`) rows
-- you want Kubernetes privilege-escalation detection to run inside Snowflake with zero egress
+- you want Kubernetes privilege-escalation detection to run inside your warehouse with zero egress
 - you want OCSF-compatible finding rows without piping audit data through Python first
 
 Do not use this pack when:
 - your table stores raw kube-apiserver audit payloads instead of OCSF-shaped events
 - you need the repo-native finding shape instead of OCSF-compatible output
-- you need generalized warehouse macros; this pack is an explicit, auditable Snowflake artifact
+- you need generalized warehouse macros; this pack is an explicit, auditable SQL artifact with per-warehouse dialects
 
 ## Input contract
 

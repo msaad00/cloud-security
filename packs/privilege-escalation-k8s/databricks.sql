@@ -1,5 +1,5 @@
 -- sqlfluff:dialect:databricks
--- privilege-escalation-k8s query pack for Databricks SQL
+-- Kubernetes privilege-escalation query pack (Databricks SQL dialect)
 --
 -- Required parameter substitution before execution:
 --   replace ${source_table} with the source table or view name
