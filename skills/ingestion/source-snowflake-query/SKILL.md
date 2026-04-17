@@ -5,11 +5,12 @@ description: >-
   for downstream ingestion, detection, or view skills. Accepts explicit
   `--query` SQL or reads the query from stdin when no `--query` is provided.
   Only `SELECT`, `WITH`, `SHOW`, and `DESCRIBE` statements are allowed, and
-  multiple statements, SQL comments, dynamic identifier helpers, and common
-  control/write keywords are rejected. Use when the user already has security
-  data in Snowflake and wants to pipe lake rows into existing skills without
-  exporting files first. Do NOT use for writes, DDL, or admin changes. Do NOT
-  use as a detector or normalizer by itself.
+  multiple statements, SQL comments, session controls, optimizer/admin verbs,
+  dynamic identifier helpers, and common control/write keywords are rejected.
+  Use when the user already has security data in Snowflake and wants to pipe
+  lake rows into existing skills without exporting files first. Do NOT use
+  for writes, DDL, or admin changes. Do NOT use as a detector or normalizer
+  by itself.
 license: Apache-2.0
 approval_model: none
 execution_modes: jit, ci, mcp, persistent
@@ -53,8 +54,9 @@ Allowed statement families:
 - `SHOW`
 - `DESCRIBE`
 
-The skill rejects multiple statements, SQL comments, dynamic identifier
-helpers, and non-read-only verbs.
+The skill rejects multiple statements, SQL comments, session or optimizer
+controls, dynamic identifier helpers, unbalanced query shapes, and
+non-read-only verbs.
 
 ## Output
 
