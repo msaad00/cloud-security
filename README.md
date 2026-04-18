@@ -31,6 +31,22 @@
 
 **Total: 45 shipped skills.**
 
+### Why different layers use different formats
+
+OCSF 1.8 is the **SIEM interop wire format** — valuable exactly where events flow to a downstream analyzer. It is not the universal internal format, and this repo is honest about where it fits:
+
+| Layer | Default emit | Rationale |
+|---|---|---|
+| **Ingest** | OCSF 1.8 (native opt-in) | Raw vendor → OCSF is what OCSF was built for. SIEMs consume it natively |
+| **Detect** | OCSF 1.8 Detection Finding 2004 (native opt-in) | Findings flow to SIEM / SOAR / ticketing — OCSF spares every downstream system from writing a custom parser |
+| **Evaluate / CSPM** | native today, OCSF Compliance Finding 2003 planned opt-in (#29) | Ops dashboards prefer native; SIEM pipelines opt into OCSF |
+| **Discover** | native / CycloneDX ML-BOM / bridge | Inventory graphs and AI BOM aren't events. OCSF Inventory Info 5001 is too thin to be worth forcing |
+| **Remediate** | native | Remediation is a state change with an operator-owned audit trail, not a finding |
+| **View** | OCSF **input**, SARIF / Mermaid out | The whole point is rendering OCSF for humans |
+| **Output (sinks)** | pass-through | Sinks write whatever the producer emitted |
+
+Full discussion: [docs/ARCHITECTURE.md §3 Layer model + §6 Wire contract](docs/ARCHITECTURE.md). The pinned OCSF contract for ingest + detect lives in [skills/detection-engineering/OCSF_CONTRACT.md](skills/detection-engineering/OCSF_CONTRACT.md).
+
 ## Architecture
 
 External signals enter through two intake layers, pass through two analyze layers, and exit through two act layers. The same skill bundle contract sits underneath every layer.

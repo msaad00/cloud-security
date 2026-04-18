@@ -9,7 +9,7 @@ This file is the design contract. It explains how the repo is supposed to work a
 - six shipped skill layers stay at the center: ingest, discover, detect, evaluate, remediate, and view
 - three edge or runtime layers sit around them: sources and sinks, query packs, and runtime surfaces
 - one skill bundle contract is shared across CLI, CI, MCP, and runners
-- OCSF is the default interoperable stream format; native stays first for operational artifacts
+- OCSF is the SIEM interop wire format for **ingest and detect**; native / CycloneDX / bridge are correct for discover, remediate, and sinks (see §3.1 for the per-layer applicability table)
 
 <details>
 <summary><b>Related contracts and expanded design principles</b></summary>
@@ -133,12 +133,36 @@ The repo operates across four schema modes:
 - **ocsf** for shared pipelines, SIEMs, and standard interoperability
 - **bridge** when OCSF transport helps but native or canonical detail still matters
 
+### 3.1 OCSF applicability by layer
+
+OCSF 1.8 is the **SIEM interop wire format**. It is valuable exactly where
+events flow to a downstream analyzer (Splunk, Sentinel, Chronicle, Elastic).
+It is not the universal internal format, and this repo treats it as a
+per-layer choice, not a repo-wide mandate.
+
+| Layer | Default emit | OCSF role | Notes |
+|---|---|---|---|
+| **L1 Ingest** | OCSF 1.8 (native opt-in) | Default — SIEM interop | Raw vendor → OCSF is what OCSF was built for. Every ingester offers `--output-format ocsf` by default |
+| **L3 Detect** | OCSF Detection Finding 2004 (native opt-in) | Default — SIEM interop | Findings flow to SIEM / SOAR / ticketing. OCSF spares every downstream from writing a custom parser. MITRE ATT&CK lives under `finding_info.attacks[]` |
+| **L4 Evaluate / CSPM** | native today; OCSF Compliance Finding 2003 planned opt-in (#29) | Optional | Ops dashboards prefer native; SIEM pipelines opt into OCSF. The migration ships as **dual output**, not a forced replacement |
+| **L2 Discover** | native / CycloneDX ML-BOM / bridge | **Not a good fit** | Inventory graphs, AI BOM, evidence snapshots are state, not events. OCSF Inventory Info 5001 is too thin to be worth forcing |
+| **L5 Remediate** | native | **Not a good fit** | Remediation is a state change with an operator-owned audit record, not a finding. `iam-departures-aws` and `remediate-okta-session-kill` both emit native |
+| **L6 View** | OCSF input required, SARIF / Mermaid output | Consumer of OCSF | The whole point of these converters is rendering OCSF for humans |
+| **L7 Output (sinks)** | pass-through | Format-agnostic | Sinks write whatever the producer emitted |
+| **L0 Sources** | pass-through | Format-agnostic | Warehouse query adapters yield whatever the source held |
+
 Most current ingest and detect paths are **fully dual-mode** and can emit either
-repo-native JSONL or OCSF JSONL. Discovery and evidence paths may emit
-deterministic native or canonical artifacts, plus OCSF bridge events where
-that improves interoperability. Evaluation, sink, and remediation outputs remain
-primarily native because they are repo-owned operational contracts rather than
-clean OCSF fits.
+repo-native JSONL or OCSF JSONL via `--output-format`. Discovery and evidence
+paths may emit deterministic native or canonical artifacts, plus OCSF bridge
+events where that improves interoperability. Evaluation, sink, and remediation
+outputs remain primarily native because they are repo-owned operational
+contracts rather than clean OCSF fits.
+
+The principle: **pick the format that fits the semantic of the layer.** OCSF
+where events flow to analyzers; native where the signal is state,
+configuration, or an audit trail; CycloneDX where the artifact is an SBOM.
+The frontmatter `output_formats` field on each SKILL.md declares which modes
+a skill supports; `--output-format` is the runtime switch.
 
 Execution-mode note:
 - `execution_modes: persistent` means a skill is safe to embed in a persistent runner, queue consumer, scheduler, or serverless loop without changing the skill logic

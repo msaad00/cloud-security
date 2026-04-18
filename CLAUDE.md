@@ -85,6 +85,10 @@ The remediation skills (IAM departures, vuln pipeline) write back to a dual audi
 trail (DynamoDB + S3) and ingest results into the source warehouse so the next
 reconciler run *cross-checks* the previous remediation actually landed.
 
+**OCSF 1.8 is the SIEM interop wire format, not the universal internal format.** It's the default for **ingest** and **detect** (that's where downstream SIEM/SOAR integration pays off). **Discover** emits native / CycloneDX / bridge (inventory and AI BOM don't map cleanly to OCSF). **Remediate** emits native (state changes + audit records, not findings). **Evaluate** is native today with OCSF Compliance Finding 2003 planned as opt-in. Pick the format that fits the layer's semantic; the `--output-format` flag is the runtime switch where both are supported. Full table: [`docs/ARCHITECTURE.md#31-ocsf-applicability-by-layer`](docs/ARCHITECTURE.md).
+
+The HITL bar for every skill — when human approval is required, how many approvers, where the gate sits — is codified in [`docs/HITL_POLICY.md`](docs/HITL_POLICY.md). Enforcement lives in [`scripts/validate_safe_skill_bar.py`](scripts/validate_safe_skill_bar.py) (wildcards, `sts:AssumeRole` boundaries, dry-run defaults).
+
 ## Agent guardrails — REQUIRED reading before invoking these skills
 
 If you are an AI agent (Claude, Cursor, Codex, Cortex, Windsurf, etc.) loading
