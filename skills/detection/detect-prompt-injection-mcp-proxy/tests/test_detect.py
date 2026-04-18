@@ -2,25 +2,31 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
-import os
-import sys
 from pathlib import Path
+from typing import Any
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from detect import (  # type: ignore[import-not-found]
-    APPLICATION_ACTIVITY_UID,
-    ATLAS_TECHNIQUE_UID,
-    CANONICAL_VERSION,
-    FINDING_CLASS_UID,
-    OUTPUT_FORMATS,
-    _matched_signals,
-    _normalize_event,
-    _suspicious_tool_declaration,
-    detect,
-    load_jsonl,
+THIS = Path(__file__).resolve().parent
+SRC = THIS.parent / "src" / "detect.py"
+SPEC = importlib.util.spec_from_file_location(
+    "detect_prompt_injection_mcp_proxy_under_test",
+    SRC,
 )
+assert SPEC and SPEC.loader
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+APPLICATION_ACTIVITY_UID = MODULE.APPLICATION_ACTIVITY_UID
+ATLAS_TECHNIQUE_UID = MODULE.ATLAS_TECHNIQUE_UID
+CANONICAL_VERSION = MODULE.CANONICAL_VERSION
+FINDING_CLASS_UID = MODULE.FINDING_CLASS_UID
+OUTPUT_FORMATS = MODULE.OUTPUT_FORMATS
+_matched_signals = MODULE._matched_signals
+_normalize_event = MODULE._normalize_event
+_suspicious_tool_declaration = MODULE._suspicious_tool_declaration
+detect = MODULE.detect
+load_jsonl = MODULE.load_jsonl
 
 THIS = Path(__file__).resolve().parent
 GOLDEN = THIS.parents[2] / "detection-engineering" / "golden"
@@ -28,7 +34,7 @@ OCSF_FIXTURE = GOLDEN / "mcp_prompt_injection_input.ocsf.jsonl"
 EXPECTED_FINDING = GOLDEN / "mcp_prompt_injection_findings.ocsf.jsonl"
 
 
-def _load(path: Path) -> list[dict]:
+def _load(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
