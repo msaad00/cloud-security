@@ -140,7 +140,7 @@ Pick the row that matches the job.
 |---|---|---|
 | a raw log file or stream | [`ingest-*`](skills/ingestion/) → [`detect-*`](skills/detection/) | OCSF Detection Finding |
 | live cloud API access | [`discover-*`](skills/discovery/) or [`evaluation/*`](skills/evaluation/) | graph / benchmark JSON |
-| warehouse rows (Snowflake, Databricks, S3) | [`source-*`](skills/ingestion/) → `detect-*` → [`sink-*`](skills/remediation/) | customer-owned persistence |
+| logs already in your lake (CloudTrail in S3, Okta in Snowflake, Databricks tables) | [`source-*`](skills/ingestion/) → `detect-*` → [`sink-*`](skills/remediation/) | customer-owned persistence |
 | an AI estate to inventory | [`discover-ai-bom`](skills/discovery/discover-ai-bom/) | CycloneDX-aligned AI BOM |
 | audit evidence to produce | [`discover-control-evidence`](skills/discovery/discover-control-evidence/) | PCI / SOC 2 evidence JSON |
 | OCSF findings to publish | [`view/*`](skills/view/) | SARIF · Mermaid |
@@ -152,26 +152,19 @@ Full crosswalk: [docs/USE_CASES.md](docs/USE_CASES.md)
 
 Three lanes. Same skill bundle contract in every lane — input, output, and control boundary are what change.
 
-```mermaid
-flowchart LR
-    classDef raw fill:#1e3a8a,stroke:#60a5fa,color:#dbeafe
-    classDef wh fill:#083344,stroke:#22d3ee,color:#cffafe
-    classDef live fill:#064e3b,stroke:#34d399,color:#d1fae5
-    classDef out fill:#422006,stroke:#fbbf24,color:#fef3c7
-    classDef safe fill:#4c0519,stroke:#f472b6,color:#fce7f3
+```
+① Raw log detection
+   raw payload ─▶ ingest-* ─▶ detect-* ─▶ view/*
+                                        └─▶ SARIF · Mermaid attack flow
 
-    subgraph L1["① Raw log detection"]
-        direction LR
-        r1[Raw payload]:::raw --> r2[ingest-*]:::raw --> r3[detect-*]:::raw --> r4[view/*]:::out
-    end
-    subgraph L2["② Warehouse detection"]
-        direction LR
-        w1[("Warehouse rows<br/>Snowflake · Databricks · S3")]:::wh --> w2[source-*]:::wh --> w3[detect-*]:::wh --> w4[sink-*]:::out
-    end
-    subgraph L3["③ Live posture and guarded action"]
-        direction LR
-        li1[Live cloud / SaaS]:::live --> li2["discover-* ·<br/>evaluation/*"]:::live --> li3[remediation/*]:::safe
-    end
+② Detection on data already in your lake
+   CloudTrail in S3 ─┐
+   Okta in Snowflake ─┼─▶ source-* ─▶ detect-* ─▶ sink-*
+   Databricks tables ─┘                        └─▶ customer-owned persistence
+
+③ Live posture and guarded action
+   live cloud / SaaS ─▶ discover-* ─┐
+                       evaluation-* ─┼─▶ remediation/* ─▶ HITL + dual audit
 ```
 
 **Example — Kubernetes privilege escalation, end-to-end:**

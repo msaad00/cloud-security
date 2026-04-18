@@ -27,9 +27,9 @@ flowchart LR
         direction LR
         r1[Raw] --> r2[ingest-*] --> r3[detect-*] --> r4[view/*]
     end
-    subgraph Lane2[Warehouse detection]
+    subgraph Lane2[Detection on data already in your lake]
         direction LR
-        w1[(Rows)] --> w2[source-*] --> w3[detect-*] --> w4[sink-*]
+        w1[("CloudTrail in S3<br/>Okta in Snowflake<br/>Databricks tables")] --> w2[source-*] --> w3[detect-*] --> w4[sink-*]
     end
     subgraph Lane3[Live posture & guarded action]
         direction LR
