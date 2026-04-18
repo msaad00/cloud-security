@@ -2,15 +2,17 @@
 
 Skills are grouped by **layered function**, not by vendor. Start with the problem you are solving, then pick the layer and skill that match it. If you want a guided entry point instead of a catalog, read [`docs/USE_CASES.md`](../docs/USE_CASES.md) first.
 
-| Category | Question it answers | Output shape |
+| Category | Question it answers | Default output format |
 |---|---|---|
-| [`ingestion/`](ingestion/) | "How do I normalize this raw source into a stable event stream?" | native or OCSF JSONL, depending on the skill |
-| [`discovery/`](discovery/) | "What does this cloud / AI estate look like right now?" | deterministic inventory / graph JSON |
-| [`detection/`](detection/) | "What attack pattern does this event stream show?" | native or OCSF detection finding |
-| [`evaluation/`](evaluation/) | "Does this posture or event stream meet a benchmark?" | Compliance / posture result |
-| [`view/`](view/) | "How should I render or export this OCSF output?" | SARIF, Mermaid, other review formats |
-| [`remediation/`](remediation/) | "Something is wrong. How do I fix it safely?" | Audited action + re-verification |
-| [`output/`](output/) | "Where do these findings / evidence / audit rows persist?" | Append-only writes to S3, Snowflake, ClickHouse |
+| [`ingestion/`](ingestion/) | "How do I normalize this raw source into a stable event stream?" | **OCSF 1.8** (native opt-in via `--output-format native`) |
+| [`discovery/`](discovery/) | "What does this cloud / AI estate look like right now?" | **native / CycloneDX / bridge** (OCSF Inventory Info 5001 is too thin to force) |
+| [`detection/`](detection/) | "What attack pattern does this event stream show?" | **OCSF Detection Finding 2004** (native opt-in) |
+| [`evaluation/`](evaluation/) | "Does this posture or event stream meet a benchmark?" | **native** today; OCSF Compliance Finding 2003 planned opt-in ([#29](https://github.com/msaad00/cloud-ai-security-skills/issues/29)) |
+| [`view/`](view/) | "How should I render or export this OCSF output?" | **SARIF / Mermaid** — consumer of OCSF |
+| [`remediation/`](remediation/) | "Something is wrong. How do I fix it safely?" | **native** (state change + audit record, not a finding) |
+| [`output/`](output/) | "Where do these findings / evidence / audit rows persist?" | **pass-through** |
+
+**OCSF is the SIEM interop wire format for ingest + detect — not the universal internal format.** See [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md#3-layer-model) §3.1 for the full applicability discussion.
 
 Every shipped skill follows the [Anthropic skills guide](https://platform.claude.com/docs/en/build-with-claude/skills-guide): `SKILL.md`, `src/`, `tests/`, `REFERENCES.md`, and explicit `Use when...` / `Do NOT use...` routing language.
 
