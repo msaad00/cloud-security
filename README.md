@@ -52,54 +52,37 @@ Full discussion: [docs/ARCHITECTURE.md §3 Layer model + §6 Wire contract](docs
 External signals enter through two intake layers, pass through two analyze layers, and exit through two act layers. The same skill bundle contract sits underneath every layer.
 
 ```mermaid
-flowchart LR
+flowchart TB
     classDef signal fill:#0f172a,stroke:#475569,color:#f1f5f9
     classDef intake fill:#1e3a8a,stroke:#60a5fa,color:#dbeafe
     classDef analyze fill:#064e3b,stroke:#34d399,color:#d1fae5
     classDef act fill:#78350f,stroke:#fbbf24,color:#fef3c7
     classDef bundle fill:#1e1b4b,stroke:#a78bfa,color:#ddd6fe
 
-    cloud["☁️ Cloud APIs<br/>AWS, GCP, Azure"]:::signal
-    logs["📋 Raw logs<br/>CloudTrail, K8s, MCP"]:::signal
-    idp["🔑 Identity<br/>Okta, Entra, Workspace"]:::signal
-    lake["🗄️ Warehouses<br/>Snowflake, Databricks"]:::signal
+    signals["External signals<br/>cloud APIs · raw logs · identity feeds · warehouses"]:::signal
 
     subgraph Intake
+        direction LR
         ingest["L1 Ingest<br/>15 skills"]:::intake
         discover["L2 Discover<br/>4 skills"]:::intake
     end
     subgraph Analyze
+        direction LR
         detect["L3 Detect<br/>10 skills · ATT&amp;CK"]:::analyze
         evaluate["L4 Evaluate<br/>7 skills · 82 checks"]:::analyze
     end
     subgraph Act
-        remediate["L5 Remediate<br/>IAM departures · HITL"]:::act
+        direction LR
+        remediate["L5 Remediate<br/>2 guarded write paths"]:::act
         view["L6 View<br/>SARIF · Mermaid"]:::act
     end
 
     bundle[("Shared skill bundle<br/>SKILL.md · src · tests")]:::bundle
 
-    cloud --> ingest
-    cloud --> discover
-    logs --> ingest
-    idp --> ingest
-    idp --> discover
-    lake --> ingest
-
-    ingest --> detect
-    discover --> detect
-    discover --> evaluate
-    detect --> view
-    detect --> remediate
-    evaluate --> view
-    evaluate --> remediate
-
-    bundle -.- ingest
-    bundle -.- discover
-    bundle -.- detect
-    bundle -.- evaluate
-    bundle -.- remediate
-    bundle -.- view
+    signals --> Intake --> Analyze --> Act
+    bundle -. same contract under every surface .-> Intake
+    bundle -. same contract under every surface .-> Analyze
+    bundle -. same contract under every surface .-> Act
 ```
 
 Full contract: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -174,7 +157,6 @@ Three lanes. Same skill bundle contract in every lane — input, output, and con
 ```mermaid
 flowchart TB
     classDef source fill:#0f172a,stroke:#475569,color:#f8fafc
-    classDef lane fill:#111827,stroke:#334155,color:#e5e7eb
     classDef skill fill:#1d4ed8,stroke:#93c5fd,color:#eff6ff
     classDef detect fill:#047857,stroke:#6ee7b7,color:#ecfdf5
     classDef sink fill:#6d28d9,stroke:#c4b5fd,color:#f5f3ff
@@ -182,15 +164,17 @@ flowchart TB
     classDef output fill:#0f2942,stroke:#7dd3fc,color:#e0f2fe
 
     subgraph lane1["1. Raw log detection and export"]
+        direction TB
         raw["raw payloads<br/>CloudTrail · K8s audit · Okta"]:::source
         ingest["ingest-*"]:::skill
         detect1["detect-*"]:::detect
         view["view/*"]:::sink
-        export["SARIF · Mermaid · JSON"]:::output
+        export["review artifact<br/>SARIF · Mermaid · JSON"]:::output
         raw --> ingest --> detect1 --> view --> export
     end
 
     subgraph lane2["2. Detection on data already in your lake"]
+        direction TB
         lake["warehouse rows or objects<br/>Snowflake · Databricks · S3"]:::source
         source["source-*"]:::skill
         detect2["detect-*"]:::detect
@@ -200,6 +184,7 @@ flowchart TB
     end
 
     subgraph lane3["3. Live posture and guarded action"]
+        direction TB
         live["live cloud or SaaS state"]:::source
         discover["discover-* / evaluation-*"]:::skill
         native["native outputs"]:::output
