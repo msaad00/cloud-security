@@ -171,19 +171,42 @@ Full crosswalk: [docs/USE_CASES.md](docs/USE_CASES.md)
 
 Three lanes. Same skill bundle contract in every lane — input, output, and control boundary are what change.
 
-```
-① Raw log detection
-   raw payload ─▶ ingest-* ─▶ detect-* ─▶ view/*
-                                        └─▶ SARIF · Mermaid attack flow
+```mermaid
+flowchart TB
+    classDef source fill:#0f172a,stroke:#475569,color:#f8fafc
+    classDef lane fill:#111827,stroke:#334155,color:#e5e7eb
+    classDef skill fill:#1d4ed8,stroke:#93c5fd,color:#eff6ff
+    classDef detect fill:#047857,stroke:#6ee7b7,color:#ecfdf5
+    classDef sink fill:#6d28d9,stroke:#c4b5fd,color:#f5f3ff
+    classDef remediate fill:#991b1b,stroke:#fca5a5,color:#fef2f2
+    classDef output fill:#0f2942,stroke:#7dd3fc,color:#e0f2fe
 
-② Detection on data already in your lake
-   CloudTrail in S3 ─┐
-   Okta in Snowflake ─┼─▶ source-* ─▶ detect-* ─▶ sink-*
-   Databricks tables ─┘                        └─▶ customer-owned persistence
+    subgraph lane1["1. Raw log detection and export"]
+        raw["raw payloads<br/>CloudTrail · K8s audit · Okta"]:::source
+        ingest["ingest-*"]:::skill
+        detect1["detect-*"]:::detect
+        view["view/*"]:::sink
+        export["SARIF · Mermaid · JSON"]:::output
+        raw --> ingest --> detect1 --> view --> export
+    end
 
-③ Live posture and guarded action
-   live cloud / SaaS ─▶ discover-* ─┐
-                       evaluation-* ─┼─▶ remediation/* ─▶ HITL + dual audit
+    subgraph lane2["2. Detection on data already in your lake"]
+        lake["warehouse rows or objects<br/>Snowflake · Databricks · S3"]:::source
+        source["source-*"]:::skill
+        detect2["detect-*"]:::detect
+        sink["sink-*"]:::sink
+        persist["customer-owned persistence"]:::output
+        lake --> source --> detect2 --> sink --> persist
+    end
+
+    subgraph lane3["3. Live posture and guarded action"]
+        live["live cloud or SaaS state"]:::source
+        discover["discover-* / evaluation-*"]:::skill
+        native["native outputs"]:::output
+        remediate["remediation/*"]:::remediate
+        audit["HITL · dual audit · re-verify"]:::output
+        live --> discover --> native --> remediate --> audit
+    end
 ```
 
 **Same flow from an MCP agent:**
